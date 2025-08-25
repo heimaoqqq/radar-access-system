@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能门禁系统 - 基于雷达步态识别</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes radar-sweep {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .radar-sweep {
+            animation: radar-sweep 3s linear infinite;
+        }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="relative">
+                        <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-xl text-gray-800">智能门禁系统</h1>
+                        <p class="text-xs text-gray-500">雷达步态识别技术</p>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="#home" class="text-blue-600 font-medium">首页</a>
+                    <a href="#detection" class="text-gray-600 hover:text-blue-600">雷达检测</a>
+                    <a href="#features" class="text-gray-600 hover:text-blue-600">核心优势</a>
+                    <a href="#comparison" class="text-gray-600 hover:text-blue-600">方案对比</a>
+                    <a href="#about" class="text-gray-600 hover:text-blue-600">关于项目</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Hero Section -->
+        <section id="home" class="mb-16">
+            <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 to-blue-800 text-white p-12">
+                <div class="relative z-10">
+                    <h1 class="text-5xl font-bold mb-6">
+                        基于雷达步态识别的<br>养老院智能门禁系统
+                    </h1>
+                    <p class="text-xl mb-8 text-blue-100 max-w-2xl">
+                        运用先进的毫米波雷达技术和深度学习算法，为养老院提供安全、便捷、人性化的智能门禁解决方案
+                    </p>
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                            <span>ResNet-18深度学习网络，识别准确率95%以上</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                            <span>6-7秒快速完成身份验证</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                            <span>域适应算法解决标注困难，支持半监督学习</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Core Features -->
+        <section id="features" class="mb-16">
+            <h2 class="text-3xl font-bold text-center mb-10">核心优势</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
+                    <div class="w-14 h-14 bg-red-100 text-red-600 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold mb-2">无感交互</h3>
+                    <p class="text-gray-600 text-sm">老人只要走到门前，门就能自动识别并开启，无需任何操作</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
+                    <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold mb-2">隐私安全</h3>
+                    <p class="text-gray-600 text-sm">不同于人脸识别，不涉及图像存储，充分保护用户隐私</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
+                    <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold mb-2">鲁棒性强</h3>
+                    <p class="text-gray-600 text-sm">步态特征不易伪造，不受衣着、发型变化影响</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
+                    <div class="w-14 h-14 bg-green-100 text-green-600 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold mb-2">适老化设计</h3>
+                    <p class="text-gray-600 text-sm">专为养老院场景优化，充分考虑老年人行动特点</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Project Features -->
+        <section id="about" class="mb-16">
+            <h2 class="text-3xl font-bold text-center mb-10">项目特点</h2>
+            <div class="grid lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold mb-4">🏥 养老场景深度结合</h3>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li>✓ 针对老年人步态特征优化算法</li>
+                        <li>✓ 支持助行器、拐杖等辅助设备</li>
+                        <li>✓ 考虑老年人行动缓慢特点</li>
+                        <li>✓ 紧急情况自动报警</li>
+                    </ul>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold mb-4">🧠 先进的域适应技术</h3>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li>✓ 解决人工标注困难问题</li>
+                        <li>✓ 利用未标记数据提升性能</li>
+                        <li>✓ 相比纯监督学习降低成本</li>
+                        <li>✓ 持续自适应优化</li>
+                    </ul>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold mb-4">📊 真实场景数据</h3>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li>✓ 非受控环境数据采集</li>
+                        <li>✓ 支持自由行走模式</li>
+                        <li>✓ 适应户外复杂环境</li>
+                        <li>✓ 更符合实际落地要求</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
