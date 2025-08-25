@@ -725,67 +725,6 @@ const GaitDetection = () => {
               )}
             </div>
 
-            {/* 模型信息 */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent flex items-center">
-                  <div className="p-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg mr-3 shadow-lg">
-                    <Brain className="w-5 h-5 text-white" />
-                  </div>
-                  AI模型信息
-                </h3>
-                <div className="px-3 py-1 bg-purple-100 text-purple-600 rounded-full text-sm font-medium">
-                  深度学习
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <motion.div 
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100 shadow-sm"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-600 text-sm font-medium">模型架构</span>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  </div>
-                  <span className="text-lg font-bold text-blue-700">ResNet-18</span>
-                </motion.div>
-                <motion.div 
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100 shadow-sm"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-600 text-sm font-medium">用户数量</span>
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  </div>
-                  <span className="text-lg font-bold text-green-700">10 users</span>
-                </motion.div>
-                <motion.div 
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-100 shadow-sm"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-600 text-sm font-medium">图像尺寸</span>
-                    <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                  </div>
-                  <span className="text-lg font-bold text-amber-700">256×256</span>
-                </motion.div>
-                <motion.div 
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  className="bg-gradient-to-br from-emerald-50 to-green-50 p-4 rounded-xl border border-emerald-100 shadow-sm"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-600 text-sm font-medium">识别精度</span>
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                  </div>
-                  <span className="text-lg font-bold text-emerald-700">95.2%</span>
-                </motion.div>
-              </div>
-            </motion.div>
           </motion.div>
         </div>
       </div>
