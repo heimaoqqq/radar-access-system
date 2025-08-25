@@ -349,15 +349,15 @@ const GaitDetection = () => {
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 min-h-[800px]">
           {/* 左侧 - 步态信息检测 */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="space-y-6"
+            className="flex flex-col h-full"
           >
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8 flex-1 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center">
                   <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg mr-3 shadow-lg">
@@ -376,7 +376,7 @@ const GaitDetection = () => {
                   </div>
                 )}
               </div>
-              <div className="relative w-full min-h-80 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl flex items-center justify-center mb-6 border-2 border-dashed border-gray-200 overflow-visible p-8">
+              <div className="relative w-full flex-1 min-h-80 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl flex items-center justify-center mb-6 border-2 border-dashed border-gray-200 overflow-visible p-8">
                 {isPreloading ? (
                   <motion.div 
                     initial={{ opacity: 0 }}
@@ -541,9 +541,9 @@ const GaitDetection = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="space-y-6"
+            className="flex flex-col h-full"
           >
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8 flex-1 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent flex items-center">
                   <div className="p-2 bg-gradient-to-r from-emerald-500 to-green-500 rounded-lg mr-3 shadow-lg">
@@ -555,7 +555,7 @@ const GaitDetection = () => {
                   实时分析
                 </div>
               </div>
-              <div className="relative w-full h-80 bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl flex items-center justify-center mb-6 border-2 border-dashed border-emerald-200 overflow-visible p-4">
+              <div className="relative w-full flex-1 min-h-80 bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl flex items-center justify-center mb-6 border-2 border-dashed border-emerald-200 overflow-visible p-4">
                 {matchedImage ? (
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.8 }}
