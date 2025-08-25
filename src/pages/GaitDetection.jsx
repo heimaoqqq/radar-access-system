@@ -127,7 +127,7 @@ const GaitDetection = () => {
     
     imageNumbers.forEach(num => {
       // 实际文件名格式：ID6_case1_1_Doppler1.jpg (去掉下划线)
-      const imagePath = `/dataset/${userId}/${userId.replace('_', '')}_case1_1_Doppler${num}.jpg`
+      const imagePath = `${import.meta.env.BASE_URL}dataset/${userId}/${userId.replace('_', '')}_case1_1_Doppler${num}.jpg`
       const fileName = `${userId.replace('_', '')}_case1_1_Doppler${num}`
       userImages.push({
         path: imagePath,
@@ -263,7 +263,7 @@ const GaitDetection = () => {
     // 模拟生成步态图像
     const selectedUserId = newUserForm.selectedUserId
     const randomImageNum = Math.floor(Math.random() * 50) + 1
-    const imagePath = `/dataset/${selectedUserId}/${selectedUserId.replace('_', '')}_case1_1_Doppler${randomImageNum}.jpg`
+    const imagePath = `${import.meta.env.BASE_URL}dataset/${selectedUserId}/${selectedUserId.replace('_', '')}_case1_1_Doppler${randomImageNum}.jpg`
     
     setProcessedImage({
       path: imagePath,
