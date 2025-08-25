@@ -449,11 +449,22 @@ const GaitDetection = () => {
                     animate={{ opacity: 1 }}
                     className="text-center py-12"
                   >
-                    <div className="bg-gradient-to-r from-blue-500 to-indigo-500 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl">
-                      <Camera className="w-10 h-10 text-white" />
-                    </div>
+                    <motion.div 
+                      className="bg-gradient-to-r from-blue-500 to-indigo-500 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl cursor-pointer hover:shadow-3xl hover:scale-125 transition-all duration-300"
+                      whileHover={{ scale: 1.25 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => {
+                        if (mode === 'identify') {
+                          handleIdentification()
+                        } else {
+                          handleStartCollection()
+                        }
+                      }}
+                    >
+                      <Radar className="w-10 h-10 text-white" />
+                    </motion.div>
                     <h4 className="text-lg font-semibold text-gray-700 mb-2">准备就绪</h4>
-                    <p className="text-gray-500">点击下方按钮开始步态检测</p>
+                    <p className="text-gray-500">点击雷达图标开始步态检测</p>
                   </motion.div>
                 )}
                 {/* 背景装饰效果 */}

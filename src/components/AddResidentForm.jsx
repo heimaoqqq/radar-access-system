@@ -8,7 +8,9 @@ const AddResidentForm = ({ onSubmit, onCancel, residents }) => {
     gender: '男',
     room: '',
     phone: '',
-    email: ''
+    email: '',
+    type: 'resident',
+    position: '住户'
   })
   const [errors, setErrors] = useState({})
 
@@ -49,6 +51,10 @@ const AddResidentForm = ({ onSubmit, onCancel, residents }) => {
     
     if (formState.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formState.email)) {
       newErrors.email = '请输入有效的邮箱地址'
+    }
+    
+    if (!formState.position.trim()) {
+      newErrors.position = '职务不能为空'
     }
 
     return newErrors
@@ -101,6 +107,8 @@ const AddResidentForm = ({ onSubmit, onCancel, residents }) => {
       room: formState.room,
       phone: formState.phone,
       email: formState.email,
+      type: formState.type,
+      position: formState.position,
       status: 'in_facility',
       joinDate: new Date().toISOString().split('T')[0],
       visits: 0,
@@ -124,7 +132,7 @@ const AddResidentForm = ({ onSubmit, onCancel, residents }) => {
         className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        <h3 className="text-2xl font-bold mb-6">添加新住户</h3>
+        <h3 className="text-2xl font-bold mb-6">添加新人员</h3>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           {errors.general && (
@@ -150,6 +158,30 @@ const AddResidentForm = ({ onSubmit, onCancel, residents }) => {
             {errors.name && (
               <p className="text-red-500 text-sm mt-1">{errors.name}</p>
             )}
+          </div>
+
+          {/* 人员类型 */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              人员类型<span className="text-red-500 ml-1">*</span>
+            </label>
+            <select
+              value={formState.type}
+              onChange={(e) => {
+                const newType = e.target.value
+                handleInputChange('type', newType)
+                // 根据类型自动设置职务
+                if (newType === 'resident') {
+                  handleInputChange('position', '住户')
+                } else {
+                  handleInputChange('position', '')
+                }
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="resident">住户</option>
+              <option value="staff">职工</option>
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -190,10 +222,52 @@ const AddResidentForm = ({ onSubmit, onCancel, residents }) => {
             </div>
           </div>
 
-          {/* 房间号 */}
+          {/* 职务 */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              房间号<span className="text-red-500 ml-1">*</span>
+              职务<span className="text-red-500 ml-1">*</span>
+            </label>
+            {formState.type === 'staff' ? (
+              <select
+                value={formState.position}
+                onChange={(e) => handleInputChange('position', e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${
+                  errors.position ? 'border-red-500' : 'border-gray-300'
+                }`}
+              >
+                <option value="">请选择职务</option>
+                <option value="主治医生">主治医生</option>
+                <option value="副主任医师">副主任医师</option>
+                <option value="主任医师">主任医师</option>
+                <option value="护士">护士</option>
+                <option value="护士长">护士长</option>
+                <option value="康复师">康复师</option>
+                <option value="营养师">营养师</option>
+                <option value="心理咨询师">心理咨询师</option>
+                <option value="社工">社工</option>
+                <option value="行政人员">行政人员</option>
+                <option value="保洁员">保洁员</option>
+                <option value="保安">保安</option>
+                <option value="厨师">厨师</option>
+                <option value="维修工">维修工</option>
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={formState.position}
+                readOnly
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+              />
+            )}
+            {errors.position && (
+              <p className="text-red-500 text-sm mt-1">{errors.position}</p>
+            )}
+          </div>
+
+          {/* 房间号/工作地点 */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              {formState.type === 'staff' ? '工作地点' : '房间号'}<span className="text-red-500 ml-1">*</span>
             </label>
             <input
               type="text"
@@ -202,7 +276,7 @@ const AddResidentForm = ({ onSubmit, onCancel, residents }) => {
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${
                 errors.room ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="如：101"
+              placeholder={formState.type === 'staff' ? '如：医务室、护士站' : '如：101'}
             />
             {errors.room && (
               <p className="text-red-500 text-sm mt-1">{errors.room}</p>

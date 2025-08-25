@@ -8,7 +8,9 @@ const EditResidentForm = ({ resident, onSubmit, onCancel }) => {
     gender: '男',
     room: '',
     phone: '',
-    email: ''
+    email: '',
+    type: 'resident',
+    position: '住户'
   })
   const [formErrors, setFormErrors] = useState({})
 
@@ -21,7 +23,9 @@ const EditResidentForm = ({ resident, onSubmit, onCancel }) => {
         gender: resident.gender,
         room: resident.room,
         phone: resident.phone,
-        email: resident.email || ''
+        email: resident.email || '',
+        type: resident.type || 'resident',
+        position: resident.position || '住户'
       })
       setFormErrors({})
     }
@@ -53,6 +57,9 @@ const EditResidentForm = ({ resident, onSubmit, onCancel }) => {
     if (editFormState.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editFormState.email)) {
       errors.email = '请输入有效的邮箱地址'
     }
+    if (!editFormState.position.trim()) {
+      errors.position = '职务不能为空'
+    }
     
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors)
@@ -67,7 +74,9 @@ const EditResidentForm = ({ resident, onSubmit, onCancel }) => {
       gender: editFormState.gender,
       room: editFormState.room.trim(),
       phone: editFormState.phone.trim(),
-      email: editFormState.email.trim()
+      email: editFormState.email.trim(),
+      type: editFormState.type,
+      position: editFormState.position.trim()
     }
 
     onSubmit(updatedResident)
@@ -86,7 +95,7 @@ const EditResidentForm = ({ resident, onSubmit, onCancel }) => {
         className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        <h3 className="text-2xl font-bold mb-6">编辑住户信息</h3>
+        <h3 className="text-2xl font-bold mb-6">编辑人员信息</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 姓名 */}
           <div>
@@ -105,6 +114,30 @@ const EditResidentForm = ({ resident, onSubmit, onCancel }) => {
             {formErrors.name && (
               <p className="text-red-500 text-sm mt-1">{formErrors.name}</p>
             )}
+          </div>
+
+          {/* 人员类型 */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              人员类型<span className="text-red-500 ml-1">*</span>
+            </label>
+            <select
+              value={editFormState.type}
+              onChange={(e) => {
+                const newType = e.target.value
+                handleEditInputChange('type', newType)
+                // 根据类型自动设置职务
+                if (newType === 'resident') {
+                  handleEditInputChange('position', '住户')
+                } else if (editFormState.position === '住户') {
+                  handleEditInputChange('position', '')
+                }
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="resident">住户</option>
+              <option value="staff">职工</option>
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -145,10 +178,52 @@ const EditResidentForm = ({ resident, onSubmit, onCancel }) => {
             </div>
           </div>
 
-          {/* 房间号 */}
+          {/* 职务 */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              房间号<span className="text-red-500 ml-1">*</span>
+              职务<span className="text-red-500 ml-1">*</span>
+            </label>
+            {editFormState.type === 'staff' ? (
+              <select
+                value={editFormState.position}
+                onChange={(e) => handleEditInputChange('position', e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${
+                  formErrors.position ? 'border-red-500' : 'border-gray-300'
+                }`}
+              >
+                <option value="">请选择职务</option>
+                <option value="主治医生">主治医生</option>
+                <option value="副主任医师">副主任医师</option>
+                <option value="主任医师">主任医师</option>
+                <option value="护士">护士</option>
+                <option value="护士长">护士长</option>
+                <option value="康复师">康复师</option>
+                <option value="营养师">营养师</option>
+                <option value="心理咨询师">心理咨询师</option>
+                <option value="社工">社工</option>
+                <option value="行政人员">行政人员</option>
+                <option value="保洁员">保洁员</option>
+                <option value="保安">保安</option>
+                <option value="厨师">厨师</option>
+                <option value="维修工">维修工</option>
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={editFormState.position}
+                readOnly
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+              />
+            )}
+            {formErrors.position && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.position}</p>
+            )}
+          </div>
+
+          {/* 房间号/工作地点 */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              {editFormState.type === 'staff' ? '工作地点' : '房间号'}<span className="text-red-500 ml-1">*</span>
             </label>
             <input
               type="text"
@@ -157,7 +232,7 @@ const EditResidentForm = ({ resident, onSubmit, onCancel }) => {
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${
                 formErrors.room ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="如：101"
+              placeholder={editFormState.type === 'staff' ? '如：医务室、护士站' : '如：101'}
             />
             {formErrors.room && (
               <p className="text-red-500 text-sm mt-1">{formErrors.room}</p>

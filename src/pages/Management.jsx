@@ -46,7 +46,9 @@ const Management = () => {
         status: 'in_facility',
         joinDate: '2024-01-15',
         visits: 245,
-        lastVisit: '2024-12-20 14:30'
+        lastVisit: '2024-12-20 14:30',
+        position: '住户',
+        type: 'resident'
       },
       {
         id: 'ID_2', 
@@ -59,7 +61,9 @@ const Management = () => {
         status: 'in_facility',
         joinDate: '2024-02-20',
         visits: 189,
-        lastVisit: '2024-12-20 09:15'
+        lastVisit: '2024-12-20 09:15',
+        position: '住户',
+        type: 'resident'
       },
       {
         id: 'ID_3',
@@ -72,7 +76,39 @@ const Management = () => {
         status: 'out_facility',
         joinDate: '2024-03-10',
         visits: 156,
-        lastVisit: '2024-12-18 16:45'
+        lastVisit: '2024-12-18 16:45',
+        position: '住户',
+        type: 'resident'
+      },
+      {
+        id: 'ID_4',
+        name: '陈医生',
+        age: 45,
+        gender: '女',
+        room: '医务室',
+        phone: '136****1234',
+        email: 'chen.doc@example.com',
+        status: 'in_facility',
+        joinDate: '2023-08-01',
+        visits: 520,
+        lastVisit: '2024-12-20 17:00',
+        position: '主治医生',
+        type: 'staff'
+      },
+      {
+        id: 'ID_5',
+        name: '护士小刘',
+        age: 28,
+        gender: '女',
+        room: '护士站',
+        phone: '135****5678',
+        email: 'liu.nurse@example.com',
+        status: 'in_facility',
+        joinDate: '2024-01-10',
+        visits: 380,
+        lastVisit: '2024-12-20 16:30',
+        position: '护士',
+        type: 'staff'
       }
     ]
   }
@@ -409,7 +445,7 @@ const Management = () => {
               </div>
               人员管理系统
             </h1>
-            <p className="text-gray-600 mt-2 font-medium">智能化管理养老院住户信息与访问权限</p>
+            <p className="text-gray-600 mt-2 font-medium">智能化管理养老院住户与职工信息与访问权限</p>
           </div>
           <div className="flex gap-3">
             <button className="px-4 py-2 border-2 border-blue-200 rounded-xl bg-white/80 backdrop-blur-sm hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 flex items-center gap-2 shadow-sm hover:shadow-md">
@@ -425,7 +461,7 @@ const Management = () => {
               className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl hover:from-purple-600 hover:to-indigo-600 transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
             >
               <UserPlus className="h-4 w-4" />
-              <span className="font-medium">添加住户</span>
+              <span className="font-medium">添加人员</span>
             </button>
           </div>
         </div>
@@ -443,7 +479,7 @@ const Management = () => {
             <div>
               <p className="text-sm font-medium text-gray-500 mb-1">总人数</p>
               <p className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">{residents.length}</p>
-              <p className="text-xs text-blue-600 font-medium mt-1">Active Residents</p>
+              <p className="text-xs text-blue-600 font-medium mt-1">All Personnel</p>
             </div>
             <div className="p-3 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl">
               <Users className="h-8 w-8 text-blue-600" />
@@ -497,11 +533,11 @@ const Management = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">平均年龄</p>
+              <p className="text-sm font-medium text-gray-500 mb-1">住户人数</p>
               <p className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 bg-clip-text text-transparent">
-                {Math.round(residents.reduce((acc, r) => acc + r.age, 0) / residents.length)}
+                {residents.filter(r => r.type === 'resident').length}
               </p>
-              <p className="text-xs text-purple-600 font-medium mt-1">Average Age</p>
+              <p className="text-xs text-purple-600 font-medium mt-1">Residents</p>
             </div>
             <div className="p-3 bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl">
               <Shield className="h-8 w-8 text-purple-600" />
@@ -581,8 +617,9 @@ const Management = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">住户信息</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">人员信息</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">年龄/性别</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">职务/房间</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">联系方式</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">访问记录</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
@@ -602,24 +639,44 @@ const Management = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                          <span className="text-primary-600 font-semibold text-sm">
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                          resident.type === 'staff' 
+                            ? 'bg-emerald-100' 
+                            : 'bg-blue-100'
+                        }`}>
+                          <span className={`font-semibold text-sm ${
+                            resident.type === 'staff' 
+                              ? 'text-emerald-600' 
+                              : 'text-blue-600'
+                          }`}>
                             {resident.name.charAt(0)}
                           </span>
                         </div>
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{resident.name}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">{resident.name}</span>
+                          <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                            resident.type === 'staff' 
+                              ? 'bg-emerald-100 text-emerald-700' 
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {resident.type === 'staff' ? '职工' : '住户'}
+                          </span>
+                        </div>
                         <div className="text-sm text-gray-500">{resident.id}</div>
                       </div>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-900">
-                      <Home className="h-4 w-4 mr-2 text-gray-400" />
-                      {resident.room}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {resident.age}岁 / {resident.gender}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{resident.position}</div>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <Home className="h-4 w-4 mr-1" />
+                      {resident.room}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{resident.phone}</div>
