@@ -390,7 +390,7 @@ const GaitDetection = () => {
                       </div>
                     </div>
                     <p className="text-gray-600 text-lg font-medium">雷达扫描中...</p>
-                    <p className="text-gray-500 text-sm mt-1">正在检测行人步态特征</p>
+                    <p className="text-gray-500 text-sm mt-1">未检测到行人</p>
                   </motion.div>
                 ) : isIdentificationComplete && matchedImage ? (
                   <motion.div 
@@ -720,14 +720,14 @@ const GaitDetection = () => {
                       )}
                     </div>
                     <div className="space-y-2 text-sm">
-                      <p><span className="font-medium">姓名:</span> {identificationResult?.name || '---'}</p>
-                      <p><span className="font-medium">用户ID:</span> {identificationResult?.id || '---'}</p>
-                      <p><span className="font-medium">年龄:</span> {identificationResult?.userInfo?.age ? `${identificationResult.userInfo.age}岁` : '---'}</p>
-                      <p><span className="font-medium">性别:</span> {identificationResult?.userInfo?.gender || '---'}</p>
-                      <p><span className="font-medium">房间:</span> {identificationResult?.userInfo?.room || '---'}</p>
-                      <p><span className="font-medium">置信度:</span> {identificationResult ? `${(identificationResult.confidence * 100).toFixed(1)}%` : '---'}</p>
-                      <p><span className="font-medium">识别时间:</span> {identificationResult?.processTime || '---'}</p>
-                      <p><span className="font-medium">时间戳:</span> {identificationResult?.timestamp || '---'}</p>
+                      <p><span className="font-medium">姓名:</span> {identificationResult?.name || ''}</p>
+                      <p><span className="font-medium">用户ID:</span> {identificationResult?.id || ''}</p>
+                      <p><span className="font-medium">年龄:</span> {identificationResult?.userInfo?.age ? `${identificationResult.userInfo.age}岁` : ''}</p>
+                      <p><span className="font-medium">性别:</span> {identificationResult?.userInfo?.gender || ''}</p>
+                      <p><span className="font-medium">房间:</span> {identificationResult?.userInfo?.room || ''}</p>
+                      <p><span className="font-medium">置信度:</span> {identificationResult ? `${(identificationResult.confidence * 100).toFixed(1)}%` : ''}</p>
+                      <p><span className="font-medium">识别时间:</span> {identificationResult?.processTime || ''}</p>
+                      <p><span className="font-medium">时间戳:</span> {identificationResult?.timestamp || ''}</p>
                     </div>
                   </div>
                 </div>
