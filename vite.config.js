@@ -12,9 +12,18 @@ export default defineConfig({
     }
   },
   publicDir: 'public',
-  assetsInclude: ['**/*.jpg', '**/*.jpeg', '**/*.png'],
+  assetsInclude: ['**/*.jpg', '**/*.jpeg', '**/*.png', '**/*.onnx'],
   build: {
     outDir: 'dist',
-    assetsDir: 'assets'
+    assetsDir: 'assets',
+    // 增加chunk大小限制以处理大文件
+    chunkSizeWarningLimit: 50000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'onnxruntime': ['onnxruntime-web']
+        }
+      }
+    }
   }
 })
