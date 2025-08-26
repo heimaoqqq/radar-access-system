@@ -1,12 +1,14 @@
 // 切换到ONNX.js以避免TensorFlow转换问题
 import * as ort from 'onnxruntime-web';
 
-// 配置ONNX Runtime使用CDN加载WASM文件
-// 使用unpkg CDN，更稳定
-ort.env.wasm.wasmPaths = 'https://unpkg.com/onnxruntime-web@1.16.3/dist/';
-// 设置执行提供者优先级
+// 配置ONNX Runtime - 解决WASM文件加载问题
+// 使用基础WASM后端，避免SIMD线程化问题
 ort.env.wasm.numThreads = 1;
-ort.env.wasm.simd = true;
+ort.env.wasm.simd = false;
+// 强制使用基础WASM文件而不是SIMD版本
+ort.env.wasm.wasmPaths = {
+  'ort-wasm.wasm': 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/ort-wasm.wasm'
+};
 
 class ResNet18Classifier {
   constructor() {
@@ -23,19 +25,19 @@ class ResNet18Classifier {
       : '';
     
     const urls = [
+      // 优先使用GitHub Releases（您上传的模型文件）
+      'https://github.com/heimaoqqq/radar-access-system/releases/download/v1.0.0/resnet18_identity.onnx',
       // GitHub Pages部署路径
       `${base}/models/resnet18_identity/resnet18_identity.onnx`,
       // 本地开发路径
-      '/models/resnet18_identity/resnet18_identity.onnx',
-      // 备用：GitHub Releases (需要处理CORS)
-      'https://raw.githubusercontent.com/heimaoqqq/radar-access-system/main/public/models/resnet18_identity/resnet18_identity.onnx'
+      '/models/resnet18_identity/resnet18_identity.onnx'
     ]
     
     let lastError = null
     
     for (let i = 0; i < urls.length; i++) {
       const modelUrl = urls[i]
-      const sourceType = i === 0 ? 'GitHub Pages路径' : i === 1 ? '本地开发路径' : 'GitHub Raw'
+      const sourceType = i === 0 ? 'GitHub Releases' : i === 1 ? 'GitHub Pages路径' : '本地开发路径'
       
       console.log(`🔄 尝试从源 ${i + 1}/${urls.length} 加载模型 (${sourceType})`)
       console.log(`📍 模型地址: ${modelUrl}`)
@@ -125,16 +127,11 @@ class ResNet18Classifier {
         })
       }
       
-      // 设置ONNX会话选项
+      // 设置ONNX会话选项 - 使用基础WASM后端
       const sessionOptions = {
-        executionProviders: [
-          {
-            name: 'wasm',
-            deviceType: 'cpu'
-          }
-        ],
-        graphOptimizationLevel: 'all',
-        logSeverityLevel: 0,
+        executionProviders: ['wasm'],
+        graphOptimizationLevel: 'basic', // 降低优化级别避免问题
+        logSeverityLevel: 2, // 减少日志输出
         enableProfiling: false
       }
       
