@@ -29,29 +29,35 @@ class ResNet18Classifier {
     this.classNames = ['ID_1', 'ID_2', 'ID_3', 'ID_4', 'ID_5', 'ID_6', 'ID_7', 'ID_8', 'ID_9', 'ID_10']
   }
 
-  // 加载ResNet18 ONNX模型 - 使用GitHub Releases托管大文件
+  // 加载ResNet18 ONNX模型
   async loadModel(progressCallback = null) {
-    // 根据环境判断基础路径
-    const base = window.location.pathname.includes('/radar-access-system/') 
-      ? '/radar-access-system' 
-      : '';
+    if (this.isLoaded && this.session) {
+      console.log('🎯 模型已加载，直接使用缓存')
+      if (progressCallback) {
+        progressCallback({
+          progress: 100,
+          status: '模型已准备就绪',
+          fromCache: true
+        })
+      }
+      return true
+    }
     
-    const urls = [
-      // 优先使用GitHub Releases（您上传的模型文件）
-      'https://github.com/heimaoqqq/radar-access-system/releases/download/v1.0.0/resnet18_identity.onnx',
-      // GitHub Pages部署路径
-      `${base}/models/resnet18_identity/resnet18_identity.onnx`,
-      // 本地开发路径
-      '/models/resnet18_identity/resnet18_identity.onnx'
+    // 只使用成功的GitHub Pages路径
+    const modelSources = [
+      {
+        name: 'GitHub Pages',
+        url: '/radar-access-system/models/resnet18_identity/resnet18_identity.onnx'
+      }
     ]
-    
     let lastError = null
     
-    for (let i = 0; i < urls.length; i++) {
-      const modelUrl = urls[i]
-      const sourceType = i === 0 ? 'GitHub Releases' : i === 1 ? 'GitHub Pages路径' : '本地开发路径'
+    for (let i = 0; i < modelSources.length; i++) {
+      const modelSource = modelSources[i]
+      const modelUrl = modelSource.url
+      const sourceType = modelSource.name
       
-      console.log(`🔄 尝试从源 ${i + 1}/${urls.length} 加载模型 (${sourceType})`)
+      console.log(`🔄 尝试从源 ${i + 1}/${modelSources.length} 加载模型 (${sourceType})`)
       console.log(`📍 模型地址: ${modelUrl}`)
       
       if (progressCallback) {

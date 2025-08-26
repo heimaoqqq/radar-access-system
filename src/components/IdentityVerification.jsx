@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import ResNet18Classifier from '../utils/resnet18Model'
+import modelManager from '../utils/modelManager'
 
 const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) => {
-  const [classifier] = useState(() => new ResNet18Classifier())
+  const classifier = modelManager.getModel() // 使用全局单例模型
   const [modelLoaded, setModelLoaded] = useState(false)
   const [selectedImages, setSelectedImages] = useState([])
   const [isVerifying, setIsVerifying] = useState(false)
@@ -13,43 +13,56 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
   const [downloadInfo, setDownloadInfo] = useState(null) // 存储下载详细信息
   const fileInputRef = useRef(null)
 
-  // 初始化加载模型
+  // 检查模型加载状态
   useEffect(() => {
-    const initModel = async () => {
-      try {
-        setLoadingStatus('连接模型服务器...')
-        setLoadingProgress(10)
-        
-        // 进度回调函数
-        const progressCallback = (info) => {
-          setDownloadInfo(info)
-          setLoadingProgress(30 + info.progress * 0.6) // 30-90% 为下载进度
-          setLoadingStatus(`下载模型: ${info.progress.toFixed(1)}% (${info.downloadedMB}/${info.totalMB}MB)`)
-        }
-        
-        const success = await classifier.loadModel(progressCallback)
-        
-        if (success) {
-          setLoadingStatus('模型加载成功!')
-          setLoadingProgress(100)
-        } else {
-          setLoadingStatus('模型加载失败，使用模拟模式')
+    const checkModel = async () => {
+      // 检查模型是否已加载
+      if (modelManager.isModelLoaded()) {
+        setLoadingStatus('模型已准备就绪!')
+        setLoadingProgress(100)
+        setModelLoaded(true)
+        console.log('✨ 使用预加载的模型')
+      } else {
+        try {
+          setLoadingStatus('连接模型服务器...')
+          setLoadingProgress(10)
+          
+          // 进度回调函数
+          const progressCallback = (info) => {
+            if (info.fromCache) {
+              setLoadingStatus('模型已准备就绪!')
+              setLoadingProgress(100)
+            } else {
+              setDownloadInfo(info)
+              setLoadingProgress(30 + info.progress * 0.6) // 30-90% 为下载进度
+              setLoadingStatus(`下载模型: ${info.progress.toFixed(1)}% (${info.downloadedMB}/${info.totalMB}MB)`)
+            }
+          }
+          
+          const success = await classifier.loadModel(progressCallback)
+          
+          if (success) {
+            setLoadingStatus('模型加载成功!')
+            setLoadingProgress(100)
+          } else {
+            setLoadingStatus('模型加载失败，使用模拟模式')
+            setLoadingProgress(0)
+          }
+          
+          setModelLoaded(success)
+          if (!success) {
+            console.warn('模型加载失败，将使用模拟模式')
+          }
+        } catch (error) {
+          console.error('模型初始化失败:', error)
+          setLoadingStatus('加载失败: ' + error.message)
           setLoadingProgress(0)
+          setModelLoaded(false)
         }
-        
-        setModelLoaded(success)
-        if (!success) {
-          console.warn('模型加载失败，将使用模拟模式')
-        }
-      } catch (error) {
-        console.error('模型初始化失败:', error)
-        setLoadingStatus('加载失败: ' + error.message)
-        setLoadingProgress(0)
-        setModelLoaded(false)
       }
     }
-    initModel()
-  }, [classifier])
+    checkModel()
+  }, [])
 
   // 处理文件选择
   const handleFileSelect = (event) => {
