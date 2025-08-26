@@ -17,9 +17,10 @@ dist-ssr
 .env.production.local
 
 # Large model files
-*.onnx
 *.pth
 *.h5
+# Allow specific ONNX model files for web deployment
+!public/models/**/*.onnx
 
 # Editor directories and files
 .vscode/*

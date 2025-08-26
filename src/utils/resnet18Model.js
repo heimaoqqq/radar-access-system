@@ -11,17 +11,18 @@ class ResNet18Classifier {
   // 加载ResNet18 ONNX模型 - 使用GitHub Releases托管大文件
   async loadModel(progressCallback = null) {
     const urls = [
-      // GitHub Releases - 专门为大文件设计，下载速度快
-      'https://github.com/heimaoqqq/radar-access-system/releases/download/v1.0.0/resnet18_identity.onnx',
-      // 本地文件备用（如果GitHub Releases不可用）
-      '/models/resnet18_identity/resnet18_identity.onnx'
+      // 本地文件优先（已确认存在于public/models/目录）
+      './models/resnet18_identity/resnet18_identity.onnx',
+      '/models/resnet18_identity/resnet18_identity.onnx',
+      // GitHub Releases（CORS问题，作为参考）
+      // 'https://github.com/heimaoqqq/radar-access-system/releases/download/v1.0.0/resnet18_identity.onnx'
     ]
     
     let lastError = null
     
     for (let i = 0; i < urls.length; i++) {
       const modelUrl = urls[i]
-      const sourceType = i === 0 ? 'GitHub Releases' : '本地文件'
+      const sourceType = i === 0 ? '本地文件(相对路径)' : '本地文件(绝对路径)'
       
       console.log(`🔄 尝试从源 ${i + 1}/${urls.length} 加载模型 (${sourceType})`)
       console.log(`📍 模型地址: ${modelUrl}`)
