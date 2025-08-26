@@ -17,15 +17,56 @@ class ResNet18Classifier {
       '/models/resnet18_identity/resnet18_identity.onnx'
     ]
     
+    let lastError = null
+    
     for (let i = 0; i < urls.length; i++) {
       const modelUrl = urls[i]
-      console.log(`🔄 尝试从源 ${i + 1}/${urls.length} 加载模型`)
+      const sourceType = i === 0 ? 'GitHub Releases' : '本地文件'
+      
+      console.log(`🔄 尝试从源 ${i + 1}/${urls.length} 加载模型 (${sourceType})`)
       console.log(`📍 模型地址: ${modelUrl}`)
+      
+      if (progressCallback) {
+        progressCallback({
+          progress: 0,
+          downloadedMB: 0,
+          totalMB: '45.2',
+          status: `尝试从${sourceType}加载...`
+        })
+      }
+      
       const success = await this.tryLoadModel(modelUrl, progressCallback)
-      if (success) return true
+      
+      if (success) {
+        console.log(`✅ 从${sourceType}加载成功!`)
+        return true
+      }
+      
+      // 记录失败原因，继续尝试下一个源
+      console.warn(`⚠️ 从${sourceType}加载失败，尝试下一个源...`)
+      
+      if (i < urls.length - 1) {
+        // 给用户一些时间看到失败信息，然后尝试下一个源
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
     }
     
     console.error('❌ 所有模型源都加载失败')
+    console.error('💡 建议排查步骤:')
+    console.error('  1. 检查网络连接是否正常')
+    console.error('  2. 确认GitHub Releases文件是否存在')
+    console.error('  3. 检查浏览器控制台的详细错误信息')
+    console.error('  4. 尝试刷新页面重新加载')
+    
+    if (progressCallback) {
+      progressCallback({
+        progress: 0,
+        downloadedMB: 0,
+        totalMB: 0,
+        status: '所有模型源加载失败，使用模拟模式'
+      })
+    }
+    
     return false
   }
   
@@ -35,10 +76,40 @@ class ResNet18Classifier {
       console.log('📍 模型源地址:', modelUrl)
       console.log('📊 模型文件大小约45MB，正在监测下载进度...')
       
+      // 通知UI开始下载
+      if (progressCallback) {
+        progressCallback({
+          progress: 5,
+          downloadedMB: 0,
+          totalMB: '45.2',
+          status: '连接服务器...'
+        })
+      }
+      
       // 下载模型文件并显示进度
       console.log('⬇️ 正在下载模型文件...')
-      const modelBuffer = await this.downloadWithProgress(modelUrl, progressCallback)
-      console.log('✅ 模型文件下载完成!')
+      const downloadStartTime = Date.now()
+      
+      const modelBuffer = await Promise.race([
+        this.downloadWithProgress(modelUrl, progressCallback),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('下载超时（120秒）')), 120000)
+        )
+      ])
+      
+      const downloadTime = ((Date.now() - downloadStartTime) / 1000).toFixed(1)
+      console.log(`✅ 模型文件下载完成! 耗时: ${downloadTime}秒`)
+      console.log(`📊 实际文件大小: ${(modelBuffer.byteLength / 1024 / 1024).toFixed(1)}MB`)
+      
+      // 通知UI开始创建会话
+      if (progressCallback) {
+        progressCallback({
+          progress: 90,
+          downloadedMB: (modelBuffer.byteLength / 1024 / 1024).toFixed(1),
+          totalMB: (modelBuffer.byteLength / 1024 / 1024).toFixed(1),
+          status: '正在创建ONNX推理会话...'
+        })
+      }
       
       // 设置ONNX会话选项
       const sessionOptions = {
@@ -48,6 +119,7 @@ class ResNet18Classifier {
       }
       
       console.log('🔄 正在创建ONNX推理会话...')
+      const sessionStartTime = Date.now()
       
       // 添加超时机制
       const timeoutPromise = new Promise((_, reject) => {
@@ -57,35 +129,100 @@ class ResNet18Classifier {
       const loadPromise = ort.InferenceSession.create(modelBuffer, sessionOptions)
       
       this.session = await Promise.race([loadPromise, timeoutPromise])
+      
+      const sessionTime = ((Date.now() - sessionStartTime) / 1000).toFixed(1)
+      console.log(`⚡ ONNX会话创建完成! 耗时: ${sessionTime}秒`)
+      
       this.isLoaded = true
       console.log('🎉 ResNet18 ONNX模型加载成功!')
       console.log('📥 模型输入:', this.session.inputNames)
       console.log('📤 模型输出:', this.session.outputNames)
+      
+      // 通知UI加载完成
+      if (progressCallback) {
+        progressCallback({
+          progress: 100,
+          downloadedMB: (modelBuffer.byteLength / 1024 / 1024).toFixed(1),
+          totalMB: (modelBuffer.byteLength / 1024 / 1024).toFixed(1),
+          status: '模型加载成功!'
+        })
+      }
+      
       return true
     } catch (error) {
       console.error(`❌ 从 ${modelUrl} 加载模型失败:`, error)
       console.error('🔍 错误详情:', error.message)
-      if (error.message.includes('fetch')) {
-        console.error('🌐 网络连接问题，请检查网络连接或稍后重试')
+      console.error('🔍 错误堆栈:', error.stack)
+      
+      // 分类错误类型并提供建议
+      if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
+        console.error('🌐 网络连接问题，可能的原因:')
+        console.error('  - 网络连接不稳定或断开')
+        console.error('  - GitHub Releases服务器不可达')
+        console.error('  - CORS策略阻止访问')
+      } else if (error.message.includes('超时')) {
+        console.error('⏰ 超时问题，可能的原因:')
+        console.error('  - 网络速度过慢')
+        console.error('  - 文件过大(45MB)下载耗时过长')
+        console.error('  - 服务器响应慢')
+      } else if (error.message.includes('ONNX') || error.message.includes('session')) {
+        console.error('🔧 ONNX模型问题，可能的原因:')
+        console.error('  - 模型文件损坏或格式不正确')
+        console.error('  - ONNX Runtime版本不兼容')
+        console.error('  - 浏览器不支持WebAssembly')
+      } else {
+        console.error('❓ 未知错误类型')
       }
+      
+      // 通知UI加载失败
+      if (progressCallback) {
+        progressCallback({
+          progress: 0,
+          downloadedMB: 0,
+          totalMB: 0,
+          status: `加载失败: ${error.message}`
+        })
+      }
+      
       return false
     }
   }
 
   // 带进度显示的下载函数
   async downloadWithProgress(url, progressCallback = null) {
-    const response = await fetch(url)
+    console.log(`🌐 开始请求: ${url}`)
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/octet-stream, */*',
+        'Cache-Control': 'no-cache'
+      }
+    })
+    
+    console.log(`📡 响应状态: ${response.status} ${response.statusText}`)
+    console.log(`📋 响应头:`, Object.fromEntries(response.headers.entries()))
+    
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${url}`)
     }
 
     const contentLength = +response.headers.get('Content-Length')
-    const totalMB = (contentLength / 1024 / 1024).toFixed(1)
-    console.log(`📦 文件总大小: ${totalMB}MB`)
+    let totalMB = 'unknown'
+    let hasContentLength = false
+    
+    if (contentLength && contentLength > 0) {
+      totalMB = (contentLength / 1024 / 1024).toFixed(1)
+      hasContentLength = true
+      console.log(`📦 文件总大小: ${totalMB}MB`)
+    } else {
+      console.log(`⚠️ 无法获取文件大小，Content-Length头缺失`)
+    }
 
     const reader = response.body.getReader()
     const chunks = []
     let receivedLength = 0
+    let lastProgressTime = 0
 
     while (true) {
       const { done, value } = await reader.read()
@@ -95,22 +232,39 @@ class ResNet18Classifier {
       chunks.push(value)
       receivedLength += value.length
 
-      // 计算并显示进度
-      if (contentLength) {
-        const progress = (receivedLength / contentLength * 100).toFixed(1)
+      const now = Date.now()
+      // 限制进度更新频率（每100ms更新一次）
+      if (now - lastProgressTime > 100) {
         const downloadedMB = (receivedLength / 1024 / 1024).toFixed(1)
         
-        console.log(`📈 下载进度: ${progress}% (${downloadedMB}MB)`)
-        
-        // 调用UI进度回调
-        if (progressCallback) {
-          progressCallback({
-            progress: parseFloat(progress),
-            downloadedMB: parseFloat(downloadedMB),
-            totalMB: parseFloat(totalMB),
-            status: '正在下载模型文件...'
-          })
+        if (hasContentLength) {
+          const progress = (receivedLength / contentLength * 100).toFixed(1)
+          console.log(`📈 下载进度: ${progress}% (${downloadedMB}MB/${totalMB}MB)`)
+          
+          if (progressCallback) {
+            progressCallback({
+              progress: parseFloat(progress),
+              downloadedMB: parseFloat(downloadedMB),
+              totalMB: parseFloat(totalMB),
+              status: '正在下载模型文件...'
+            })
+          }
+        } else {
+          console.log(`📈 下载进度: ${downloadedMB}MB (未知总大小)`)
+          
+          if (progressCallback) {
+            // 没有总大小时，使用已下载字节数估算进度
+            const estimatedProgress = Math.min(95, (receivedLength / (50 * 1024 * 1024)) * 100)
+            progressCallback({
+              progress: estimatedProgress,
+              downloadedMB: parseFloat(downloadedMB),
+              totalMB: 'unknown',
+              status: `正在下载模型文件... ${downloadedMB}MB`
+            })
+          }
         }
+        
+        lastProgressTime = now
       }
     }
 
