@@ -1,22 +1,25 @@
 // 使用ONNX Runtime Web
 import * as ort from 'onnxruntime-web';
 
-// 强制配置ONNX Runtime使用基础WASM后端
-// 必须在任何会话创建之前设置
+// 在导入后立即配置ONNX Runtime - 禁用所有高级特性
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.simd = false;
 ort.env.wasm.proxy = false;
 
-// 强制指定WASM文件路径，避免自动选择SIMD版本
-ort.env.wasm.wasmPaths = {
-  'ort-wasm.wasm': 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/ort-wasm.wasm'
-};
+// 使用CDN的基础WASM文件，避免404错误
+ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/';
+
+// 禁用WebGL和WebGPU后端，只使用WASM
+ort.env.webgl.disabled = true;
+ort.env.webgpu.disabled = true;
 
 console.log('🔧 ONNX Runtime强制配置:', {
   numThreads: ort.env.wasm.numThreads,
   simd: ort.env.wasm.simd,
   proxy: ort.env.wasm.proxy,
-  wasmPaths: ort.env.wasm.wasmPaths
+  wasmPaths: ort.env.wasm.wasmPaths,
+  webglDisabled: ort.env.webgl.disabled,
+  webgpuDisabled: ort.env.webgpu.disabled
 });
 
 class ResNet18Classifier {
@@ -136,12 +139,24 @@ class ResNet18Classifier {
         })
       }
       
-      // 设置ONNX会话选项 - 使用最简单的配置
+      // 设置ONNX会话选项 - 强制使用基础WASM后端
       const sessionOptions = {
-        executionProviders: ['wasm'],
+        executionProviders: [{
+          name: 'wasm',
+          // 禁用SIMD和多线程
+          simd: false,
+          numThreads: 1
+        }],
         graphOptimizationLevel: 'disabled',
         logSeverityLevel: 0,
-        enableProfiling: false
+        enableProfiling: false,
+        // 添加额外的配置以确保使用基础WASM
+        extra: {
+          wasm: {
+            simd: false,
+            numThreads: 1
+          }
+        }
       }
       
       console.log('📋 会话配置:', sessionOptions);

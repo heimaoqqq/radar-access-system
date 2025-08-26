@@ -3,25 +3,27 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: process.env.NODE_ENV === 'production' ? '/radar-access-system/' : '/',
-  server: {
-    port: 3000,
-    host: true,
-    fs: {
-      allow: ['..', './dataset']
-    }
-  },
+  base: '/radar-access-system/',
   publicDir: 'public',
-  assetsInclude: ['**/*.jpg', '**/*.jpeg', '**/*.png', '**/*.onnx'],
   build: {
     outDir: 'dist',
-    assetsDir: 'assets',
-    // 增加chunk大小限制以处理大文件
+    assetsInlineLimit: 0,
+    assetsInclude: ['**/*.onnx'],
     chunkSizeWarningLimit: 50000,
     rollupOptions: {
       output: {
         manualChunks: {
           'onnxruntime': ['onnxruntime-web']
+        },
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name && assetInfo.name.endsWith('.onnx')) {
+            return 'models/[name][extname]'
+          }
+          // 确保WASM相关文件放在assets目录
+          if (assetInfo.name && (assetInfo.name.includes('ort-wasm') || assetInfo.name.includes('.wasm'))) {
+            return 'assets/[name][extname]'
+          }
+          return 'assets/[name]-[hash][extname]'
         }
       }
     }
