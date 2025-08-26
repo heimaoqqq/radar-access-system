@@ -298,7 +298,17 @@ class ResNet18Classifier {
     const reader = response.body.getReader()
     const chunks = []
     let receivedLength = 0
-    let lastProgressTime = 0
+    let lastProgressTime = 0  // 初始化为0，确保第一次就更新
+
+    // 立即发送一个初始进度
+    if (progressCallback) {
+      progressCallback({
+        progress: 0,
+        downloadedMB: '0',
+        totalMB: hasContentLength ? totalMB : '45.2',
+        status: '开始下载模型...'
+      })
+    }
 
     while (true) {
       const { done, value } = await reader.read()
@@ -309,12 +319,12 @@ class ResNet18Classifier {
       receivedLength += value.length
 
       const now = Date.now()
-      // 限制进度更新频率（每100ms更新一次）
-      if (now - lastProgressTime > 100) {
+      // 限制进度更新频率（每50ms更新一次，提高实时性）
+      if (now - lastProgressTime >= 50) {
         const downloadedMB = (receivedLength / 1024 / 1024).toFixed(1)
         
         if (hasContentLength) {
-          const progress = Math.min(100, (receivedLength / contentLength * 100)).toFixed(1)
+          const progress = Math.min(99, (receivedLength / contentLength * 100)).toFixed(1)
           console.log(`📈 下载进度: ${progress}% (${downloadedMB}MB/${totalMB}MB)`)
           
           if (progressCallback) {
@@ -322,7 +332,7 @@ class ResNet18Classifier {
               progress: parseFloat(progress),
               downloadedMB: downloadedMB,
               totalMB: totalMB,
-              status: `模型载入中: ${progress}%`
+              status: `下载中: ${progress}%`
             })
           }
         } else {
@@ -335,7 +345,7 @@ class ResNet18Classifier {
               progress: estimatedProgress,
               downloadedMB: downloadedMB,
               totalMB: '45.2',
-              status: `模型载入中...`
+              status: `下载中...`
             })
           }
         }

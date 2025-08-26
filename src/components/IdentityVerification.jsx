@@ -268,7 +268,12 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
           success: Math.random() > 0.3, // 70%成功率
           identifiedId: mockId,
           confidence: 0.85 + Math.random() * 0.1,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          predictions: selectedImages.map((img, idx) => ({
+            imageIndex: idx,
+            predictedId: mockId,
+            confidence: 0.8 + Math.random() * 0.2
+          }))
         }
       }
 
@@ -284,9 +289,10 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
             success: true,
             identifiedId: result.identifiedId,
             person: person,
-            confidence: result.confidence,
+            confidence: result.confidence || 0.95,
             timePermission: timePermission,
-            timestamp: result.timestamp
+            timestamp: result.timestamp || new Date().toISOString(),
+            predictions: result.predictions || []
           }
           
           setVerificationResult(finalResult)
@@ -370,32 +376,51 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
                   animate={{ opacity: 1, scale: 1 }}
                   className="bg-gray-50 rounded-lg p-4 border border-gray-200"
                 >
-                  {/* 主进度条 */}
+                  {/* 进度条 */}
                   <div className="relative">
-                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div className="bg-gradient-to-r from-gray-200 to-gray-300 rounded-full h-3 overflow-hidden shadow-inner">
                       <motion.div
-                        className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full relative"
+                        className="h-full rounded-full relative overflow-hidden"
+                        style={{
+                          background: `linear-gradient(90deg, #3B82F6 0%, #2563EB ${loadingProgress}%, #1D4ED8 100%)`,
+                          boxShadow: '0 2px 4px rgba(59, 130, 246, 0.5)'
+                        }}
                         initial={{ width: 0 }}
                         animate={{ width: `${loadingProgress}%` }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
                       >
                         {/* 动画光效 */}
                         <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30"
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent"
+                          style={{ opacity: 0.4 }}
                           animate={{ x: ["-100%", "200%"] }}
-                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                        />
+                        {/* 波纹效果 */}
+                        <motion.div
+                          className="absolute inset-0"
+                          style={{
+                            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                            width: '30%'
+                          }}
+                          animate={{ x: ['-30%', '130%'] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.5 }}
                         />
                       </motion.div>
                     </div>
                     
                     {/* 进度百分比 */}
                     <motion.div
-                      className="absolute -right-1 -top-8 bg-blue-600 text-white text-xs px-2 py-1 rounded-md"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: loadingProgress > 0 ? 1 : 0 }}
+                      className="absolute -right-1 -top-8 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs px-2 py-1 rounded-md shadow-lg"
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ 
+                        opacity: loadingProgress > 0 ? 1 : 0,
+                        scale: loadingProgress > 0 ? 1 : 0
+                      }}
+                      transition={{ type: "spring", stiffness: 200 }}
                     >
                       {loadingProgress.toFixed(0)}%
-                      <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-600 rotate-45" />
+                      <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gradient-to-r from-blue-600 to-blue-700 rotate-45" />
                     </motion.div>
                   </div>
                   
@@ -543,7 +568,8 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
                   <img
                     src={img.url}
                     alt={`验证图像 ${index + 1}`}
-                    className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
+                    className="w-full h-full object-cover rounded-lg border-2 border-gray-200"
+                    style={{ width: '256px', height: '256px' }}
                   />
                   <span className="absolute top-1 left-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">
                     {index + 1}
@@ -606,6 +632,41 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
                   <p><strong>姓名:</strong> {verificationResult.person?.name}</p>
                   <p><strong>类型:</strong> {verificationResult.person?.type === 'staff' ? '职工' : '住户'}</p>
                   <p><strong>置信度:</strong> {(verificationResult.confidence * 100).toFixed(1)}%</p>
+                  
+                  {/* 显示每张图片的识别结果 */}
+                  <div className="mt-3 border-t pt-3">
+                    <p className="font-medium text-gray-700 mb-2">图像识别详情:</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {selectedImages.map((img, index) => {
+                        const prediction = verificationResult.predictions?.[index]
+                        return (
+                          <div key={index} className="text-center">
+                            <div className="relative mb-2">
+                              <img
+                                src={img.url}
+                                alt={`图像 ${index + 1}`}
+                                className="w-20 h-20 object-cover rounded border-2 border-gray-300 mx-auto"
+                              />
+                              <span className="absolute top-0 left-0 bg-blue-600 text-white text-xs px-1 rounded-tl">
+                                {index + 1}
+                              </span>
+                            </div>
+                            <p className="text-xs font-medium text-gray-800">
+                              {prediction?.predictedId || verificationResult.identifiedId}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              {img.name ? img.name.split('/').pop() : `图像${index + 1}`}
+                            </p>
+                            {prediction?.confidence && (
+                              <p className="text-xs text-gray-500">
+                                置信度: {(prediction.confidence * 100).toFixed(1)}%
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
                   
                   {verificationResult.timePermission?.allowed ? (
                     <div className="bg-green-100 p-2 rounded mt-2">
