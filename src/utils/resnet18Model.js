@@ -8,8 +8,25 @@ class ResNet18Classifier {
     this.classNames = ['ID_1', 'ID_2', 'ID_3', 'ID_4', 'ID_5', 'ID_6', 'ID_7', 'ID_8', 'ID_9', 'ID_10']
   }
 
-  // 加载ResNet18 ONNX模型 - 使用本地文件
-  async loadModel(modelUrl = '/models/resnet18_identity/resnet18_identity.onnx') {
+  // 加载ResNet18 ONNX模型 - 优先使用Hugging Face，GitHub Pages不支持45MB大文件
+  async loadModel() {
+    const urls = [
+      'https://huggingface.co/heimaoqqq/resnet18-gait-recognition/resolve/main/resnet18_identity.onnx',
+      '/models/resnet18_identity/resnet18_identity.onnx'
+    ]
+    
+    for (let i = 0; i < urls.length; i++) {
+      const modelUrl = urls[i]
+      console.log(`尝试从源 ${i + 1}/${urls.length} 加载模型: ${modelUrl}`)
+      const success = await this.tryLoadModel(modelUrl)
+      if (success) return true
+    }
+    
+    console.error('所有模型源都加载失败')
+    return false
+  }
+  
+  async tryLoadModel(modelUrl) {
     try {
       console.log('正在加载ResNet18 ONNX身份识别模型...')
       console.log('模型文件大小约45MB，首次加载需要30-60秒，请耐心等待...')
@@ -21,11 +38,11 @@ class ResNet18Classifier {
         enableProfiling: false
       }
       
-      console.log('从本地加载模型:', modelUrl)
+      console.log('正在从模型源加载:', modelUrl)
       
       // 添加超时机制
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('模型加载超时（90秒）')), 90000)
+        setTimeout(() => reject(new Error('模型加载超时（120秒）')), 120000)
       })
       
       const loadPromise = ort.InferenceSession.create(modelUrl, sessionOptions)
@@ -37,9 +54,8 @@ class ResNet18Classifier {
       console.log('模型输出:', this.session.outputNames)
       return true
     } catch (error) {
-      console.error('❌ ONNX模型加载失败:', error)
+      console.error(`❌ 从 ${modelUrl} 加载模型失败:`, error)
       console.error('错误详情:', error.message)
-      this.isLoaded = false
       return false
     }
   }
