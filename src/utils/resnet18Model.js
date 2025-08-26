@@ -31,36 +31,86 @@ class ResNet18Classifier {
   
   async tryLoadModel(modelUrl) {
     try {
-      console.log('正在加载ResNet18 ONNX身份识别模型...')
-      console.log('模型文件大小约45MB，首次加载需要30-60秒，请耐心等待...')
+      console.log('🚀 开始加载ResNet18 ONNX身份识别模型...')
+      console.log('📍 模型源地址:', modelUrl)
+      console.log('📊 模型文件大小约45MB，正在监测下载进度...')
       
-      // 设置加载选项，包括超时和进度
+      // 下载模型文件并显示进度
+      console.log('⬇️ 正在下载模型文件...')
+      const modelBuffer = await this.downloadWithProgress(modelUrl)
+      console.log('✅ 模型文件下载完成!')
+      
+      // 设置ONNX会话选项
       const sessionOptions = {
         executionProviders: ['wasm'],
         logSeverityLevel: 0,
         enableProfiling: false
       }
       
-      console.log('正在从模型源加载:', modelUrl)
+      console.log('🔄 正在创建ONNX推理会话...')
       
       // 添加超时机制
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('模型加载超时（120秒）')), 120000)
+        setTimeout(() => reject(new Error('ONNX会话创建超时（60秒）')), 60000)
       })
       
-      const loadPromise = ort.InferenceSession.create(modelUrl, sessionOptions)
+      const loadPromise = ort.InferenceSession.create(modelBuffer, sessionOptions)
       
       this.session = await Promise.race([loadPromise, timeoutPromise])
       this.isLoaded = true
-      console.log('✅ ResNet18 ONNX模型加载成功!')
-      console.log('模型输入:', this.session.inputNames)
-      console.log('模型输出:', this.session.outputNames)
+      console.log('🎉 ResNet18 ONNX模型加载成功!')
+      console.log('📥 模型输入:', this.session.inputNames)
+      console.log('📤 模型输出:', this.session.outputNames)
       return true
     } catch (error) {
       console.error(`❌ 从 ${modelUrl} 加载模型失败:`, error)
-      console.error('错误详情:', error.message)
+      console.error('🔍 错误详情:', error.message)
+      if (error.message.includes('fetch')) {
+        console.error('🌐 网络连接问题，请检查网络连接或稍后重试')
+      }
       return false
     }
+  }
+
+  // 带进度显示的下载函数
+  async downloadWithProgress(url) {
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const contentLength = +response.headers.get('Content-Length')
+    console.log(`📦 文件总大小: ${(contentLength / 1024 / 1024).toFixed(1)}MB`)
+
+    const reader = response.body.getReader()
+    const chunks = []
+    let receivedLength = 0
+
+    while (true) {
+      const { done, value } = await reader.read()
+
+      if (done) break
+
+      chunks.push(value)
+      receivedLength += value.length
+
+      // 计算并显示进度
+      const progress = contentLength ? (receivedLength / contentLength * 100).toFixed(1) : 'unknown'
+      const downloadedMB = (receivedLength / 1024 / 1024).toFixed(1)
+      
+      console.log(`📈 下载进度: ${progress}% (${downloadedMB}MB)`)
+    }
+
+    console.log('🔗 正在合并数据块...')
+    // 合并所有chunk
+    const allChunks = new Uint8Array(receivedLength)
+    let position = 0
+    for (let chunk of chunks) {
+      allChunks.set(chunk, position)
+      position += chunk.length
+    }
+
+    return allChunks.buffer
   }
 
   // 预处理图像：转换为ONNX格式输入 [1, 3, 224, 224]
