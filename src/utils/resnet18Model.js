@@ -2,7 +2,11 @@
 import * as ort from 'onnxruntime-web';
 
 // 配置ONNX Runtime使用CDN加载WASM文件
-ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.1/dist/';
+// 使用unpkg CDN，更稳定
+ort.env.wasm.wasmPaths = 'https://unpkg.com/onnxruntime-web@1.16.3/dist/';
+// 设置执行提供者优先级
+ort.env.wasm.numThreads = 1;
+ort.env.wasm.simd = true;
 
 class ResNet18Classifier {
   constructor() {
@@ -123,12 +127,15 @@ class ResNet18Classifier {
       
       // 设置ONNX会话选项
       const sessionOptions = {
-        executionProviders: ['wasm'],
+        executionProviders: [
+          {
+            name: 'wasm',
+            deviceType: 'cpu'
+          }
+        ],
         graphOptimizationLevel: 'all',
         logSeverityLevel: 0,
-        enableProfiling: false,
-        // 添加WebGL后备支持
-        backupExecutionProviders: ['webgl', 'cpu']
+        enableProfiling: false
       }
       
       console.log('🔄 正在创建ONNX推理会话...')
@@ -251,7 +258,7 @@ class ResNet18Classifier {
         const downloadedMB = (receivedLength / 1024 / 1024).toFixed(1)
         
         if (hasContentLength) {
-          const progress = (receivedLength / contentLength * 100).toFixed(1)
+          const progress = Math.min(100, (receivedLength / contentLength * 100)).toFixed(1)
           console.log(`📈 下载进度: ${progress}% (${downloadedMB}MB/${totalMB}MB)`)
           
           if (progressCallback) {
