@@ -11,6 +11,8 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [loadingStatus, setLoadingStatus] = useState('初始化...')
   const [downloadInfo, setDownloadInfo] = useState(null) // 存储下载详细信息
+  const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingImages, setIsLoadingImages] = useState(false)
   const fileInputRef = useRef(null)
 
   // 检查模型加载状态
@@ -24,8 +26,9 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
         console.log('✨ 使用预加载的模型')
       } else {
         try {
+          setIsLoading(true)
           setLoadingStatus('连接模型服务器...')
-          setLoadingProgress(10)
+          setLoadingProgress(5)
           
           // 进度回调函数
           const progressCallback = (info) => {
@@ -34,8 +37,18 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
               setLoadingProgress(100)
             } else {
               setDownloadInfo(info)
-              setLoadingProgress(30 + info.progress * 0.6) // 30-90% 为下载进度
-              setLoadingStatus(`模型载入中: ${info.progress.toFixed(1)}% (${info.downloadedMB}/${info.totalMB}MB)`)
+              // 直接使用实际进度
+              const actualProgress = Math.min(99, info.progress || 0)
+              setLoadingProgress(actualProgress)
+              
+              // 根据进度显示不同状态
+              if (actualProgress < 10) {
+                setLoadingStatus('正在连接服务器...')
+              } else if (actualProgress < 90) {
+                setLoadingStatus(`模型载入中: ${actualProgress.toFixed(0)}%`)
+              } else {
+                setLoadingStatus('正在初始化模型...')
+              }
             }
           }
           
@@ -59,11 +72,133 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
           setLoadingStatus('加载失败: ' + error.message)
           setLoadingProgress(0)
           setModelLoaded(false)
+        } finally {
+          setIsLoading(false)
         }
       }
     }
     checkModel()
   }, [])
+
+  // 从数据集自动选择图像
+  const autoSelectImages = async () => {
+    setIsLoadingImages(true)
+    setSelectedImages([])
+    setVerificationResult(null)
+    
+    try {
+      // 定义可用的ID列表
+      const availableIds = ['ID_1', 'ID_2', 'ID_3', 'ID_4', 'ID_5', 'ID_6', 'ID_7', 'ID_8', 'ID_9', 'ID_10']
+      
+      // 随机选择一个主ID
+      const primaryId = availableIds[Math.floor(Math.random() * availableIds.length)]
+      console.log(`🎯 选中主ID: ${primaryId}`)
+      
+      // 获取该ID的所有图像
+      const response = await fetch('/radar-access-system/dataset_index.json')
+      let datasetIndex = {}
+      
+      if (response.ok) {
+        datasetIndex = await response.json()
+      } else {
+        // 如果没有索引文件，手动构建
+        const imagePatterns = {
+          'ID_1': Array.from({length: 150}, (_, i) => `ID1_case1_1_Doppler${i+1}.jpg`),
+          'ID_2': Array.from({length: 150}, (_, i) => `ID2_case1_1_Doppler${i+1}.jpg`),
+          'ID_3': Array.from({length: 150}, (_, i) => `ID3_case1_1_Doppler${i+1}.jpg`),
+          'ID_4': Array.from({length: 150}, (_, i) => `ID4_case1_1_Doppler${i+1}.jpg`),
+          'ID_5': Array.from({length: 150}, (_, i) => `ID5_case1_1_Doppler${i+1}.jpg`),
+          'ID_6': Array.from({length: 150}, (_, i) => `ID6_case1_1_Doppler${i+1}.jpg`),
+          'ID_7': Array.from({length: 150}, (_, i) => `ID7_case1_1_Doppler${i+1}.jpg`),
+          'ID_8': Array.from({length: 150}, (_, i) => `ID8_case1_1_Doppler${i+1}.jpg`),
+          'ID_9': Array.from({length: 150}, (_, i) => `ID9_case1_1_Doppler${i+1}.jpg`),
+          'ID_10': Array.from({length: 150}, (_, i) => `ID10_case1_1_Doppler${i+1}.jpg`)
+        }
+        datasetIndex = imagePatterns
+      }
+      
+      const primaryImages = datasetIndex[primaryId] || []
+      if (primaryImages.length < 2) {
+        throw new Error(`${primaryId} 没有足够的图像`)
+      }
+      
+      // 随机选择2张图像（不重复）
+      const selectedIndices = new Set()
+      while (selectedIndices.size < 2) {
+        selectedIndices.add(Math.floor(Math.random() * primaryImages.length))
+      }
+      
+      const selectedImagePaths = []
+      const indices = Array.from(selectedIndices)
+      selectedImagePaths.push(`/radar-access-system/dataset/${primaryId}/${primaryImages[indices[0]]}`)
+      selectedImagePaths.push(`/radar-access-system/dataset/${primaryId}/${primaryImages[indices[1]]}`)
+      
+      // 第3张图像：50%概率同ID，50%概率不同ID
+      const useSameId = Math.random() < 0.5
+      
+      if (useSameId) {
+        // 从同一ID选择第3张（确保不重复）
+        let thirdIndex
+        do {
+          thirdIndex = Math.floor(Math.random() * primaryImages.length)
+        } while (selectedIndices.has(thirdIndex))
+        
+        selectedImagePaths.push(`/radar-access-system/dataset/${primaryId}/${primaryImages[thirdIndex]}`)
+        console.log(`✅ 第3张图像来自同一ID: ${primaryId}`)
+      } else {
+        // 从不同ID选择第3张
+        const otherIds = availableIds.filter(id => id !== primaryId)
+        const otherId = otherIds[Math.floor(Math.random() * otherIds.length)]
+        const otherImages = datasetIndex[otherId] || []
+        
+        if (otherImages.length > 0) {
+          const randomIndex = Math.floor(Math.random() * otherImages.length)
+          selectedImagePaths.push(`/radar-access-system/dataset/${otherId}/${otherImages[randomIndex]}`)
+          console.log(`❌ 第3张图像来自不同ID: ${otherId}`)
+        } else {
+          // 如果其他ID没有图像，还是用同一ID
+          let thirdIndex
+          do {
+            thirdIndex = Math.floor(Math.random() * primaryImages.length)
+          } while (selectedIndices.has(thirdIndex))
+          selectedImagePaths.push(`/radar-access-system/dataset/${primaryId}/${primaryImages[thirdIndex]}`)
+          console.log(`⚠️ 备选方案：第3张图像仍来自: ${primaryId}`)
+        }
+      }
+      
+      // 加载所有选中的图像
+      console.log('📷 选中的图像路径:', selectedImagePaths)
+      
+      const imagePromises = selectedImagePaths.map((path, index) => {
+        return new Promise((resolve, reject) => {
+          const img = new Image()
+          img.onload = () => {
+            console.log(`✅ 图像${index + 1}加载成功: ${path}`)
+            resolve({
+              file: { name: path.split('/').pop() },
+              imageElement: img,
+              url: path
+            })
+          }
+          img.onerror = () => {
+            console.error(`❌ 图像${index + 1}加载失败: ${path}`)
+            reject(new Error(`无法加载图像: ${path}`))
+          }
+          img.src = path
+        })
+      })
+      
+      const loadedImages = await Promise.all(imagePromises)
+      setSelectedImages(loadedImages)
+      console.log('🎉 所有图像加载完成')
+      
+    } catch (error) {
+      console.error('自动选择图像失败:', error)
+      alert('自动选择图像失败: ' + error.message)
+    } finally {
+      setIsLoadingImages(false)
+    }
+  }
 
   // 处理文件选择
   const handleFileSelect = (event) => {
@@ -202,41 +337,195 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <div className="mb-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-2">AI身份验证</h3>
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${modelLoaded ? 'bg-green-500' : loadingProgress > 0 ? 'bg-blue-500' : 'bg-yellow-500'}`}></div>
-          <span className="text-sm text-gray-600">
-            {modelLoaded ? 'ResNet18模型已就绪' : loadingStatus}
-          </span>
-          {!modelLoaded && loadingProgress > 0 && (
-            <div className="flex-1 max-w-48">
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                     style={{ width: `${loadingProgress}%` }}></div>
+        <h3 className="text-xl font-bold text-gray-800 mb-4">AI身份验证</h3>
+        
+        {/* 模型加载状态 */}
+        <AnimatePresence mode="wait">
+          {!modelLoaded ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-3"
+            >
+              {/* 状态指示器 */}
+              <div className="flex items-center space-x-3">
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className={`w-3 h-3 rounded-full ${
+                    isLoading ? 'bg-gradient-to-r from-blue-400 to-blue-600' : 'bg-yellow-500'
+                  }`}
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  {loadingStatus}
+                </span>
               </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {loadingProgress.toFixed(1)}% 
-                {downloadInfo && ` - ${downloadInfo.downloadedMB}/${downloadInfo.totalMB}MB`}
-              </div>
-            </div>
+              
+              {/* 进度条容器 */}
+              {isLoading && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                >
+                  {/* 主进度条 */}
+                  <div className="relative">
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full relative"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${loadingProgress}%` }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                      >
+                        {/* 动画光效 */}
+                        <motion.div
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30"
+                          animate={{ x: ["-100%", "200%"] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        />
+                      </motion.div>
+                    </div>
+                    
+                    {/* 进度百分比 */}
+                    <motion.div
+                      className="absolute -right-1 -top-8 bg-blue-600 text-white text-xs px-2 py-1 rounded-md"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: loadingProgress > 0 ? 1 : 0 }}
+                    >
+                      {loadingProgress.toFixed(0)}%
+                      <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-600 rotate-45" />
+                    </motion.div>
+                  </div>
+                  
+                  {/* 下载信息 */}
+                  {downloadInfo && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex justify-between items-center mt-3 text-xs text-gray-600"
+                    >
+                      <span className="flex items-center space-x-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                        </svg>
+                        <span>{downloadInfo.downloadedMB} MB / {downloadInfo.totalMB} MB</span>
+                      </span>
+                      <span className="flex items-center space-x-1">
+                        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        <span>下载中...</span>
+                      </span>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="loaded"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center space-x-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3"
+            >
+              <motion.svg
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200 }}
+                className="w-5 h-5 text-green-600"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </motion.svg>
+              <span className="text-sm font-medium text-green-800">
+                ResNet18模型已就绪
+              </span>
+              <span className="text-xs text-green-600 ml-auto">
+                准备进行身份验证
+              </span>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
 
-      {/* 文件选择区域 */}
+      {/* 图像选择区域 */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          选择3张身份图像 (JPG/PNG)
-        </label>
+        <div className="flex items-center justify-between mb-3">
+          <label className="block text-sm font-medium text-gray-700">
+            身份验证图像
+          </label>
+          <div className="flex space-x-2">
+            {/* 自动选择按钮 */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={autoSelectImages}
+              disabled={isLoadingImages || !modelLoaded}
+              className={`
+                px-4 py-2 rounded-lg text-sm font-medium transition-all
+                ${isLoadingImages || !modelLoaded
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-md'}
+              `}
+            >
+              {isLoadingImages ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  加载中...
+                </span>
+              ) : (
+                <span className="flex items-center">
+                  <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  自动选择
+                </span>
+              )}
+            </motion.button>
+            
+            {/* 手动选择按钮 */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!modelLoaded}
+              className={`
+                px-4 py-2 rounded-lg text-sm font-medium transition-all
+                ${!modelLoaded
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}
+              `}
+            >
+              <span className="flex items-center">
+                <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                手动上传
+              </span>
+            </motion.button>
+          </div>
+        </div>
+        
+        {/* 隐藏的文件输入 */}
         <input
           ref={fileInputRef}
           type="file"
           multiple
           accept=".jpg,.jpeg,.png"
           onChange={handleFileSelect}
-          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          className="hidden"
         />
-        <p className="text-xs text-gray-500 mt-1">请选择恰好3张图像，系统将验证一致性</p>
+        
+        <p className="text-xs text-gray-500">
+          自动选择：智能抽取数据集图像 | 手动上传：选择3张JPG/PNG图像
+        </p>
       </div>
 
       {/* 图像预览 */}

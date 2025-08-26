@@ -135,9 +135,9 @@ class ResNet18Classifier {
       // 通知UI开始下载
       if (progressCallback) {
         progressCallback({
-          progress: 5,
+          progress: 2,
           downloadedMB: 0,
-          totalMB: '45.2',
+          totalMB: 45.2,
           status: '连接服务器...'
         })
       }
@@ -320,9 +320,9 @@ class ResNet18Classifier {
           if (progressCallback) {
             progressCallback({
               progress: parseFloat(progress),
-              downloadedMB: parseFloat(downloadedMB),
-              totalMB: parseFloat(totalMB),
-              status: `模型载入中: ${progress}% (${downloadedMB}MB/${totalMB}MB)`
+              downloadedMB: downloadedMB,
+              totalMB: totalMB,
+              status: `模型载入中: ${progress}%`
             })
           }
         } else {
@@ -333,9 +333,9 @@ class ResNet18Classifier {
             const estimatedProgress = Math.min(95, (receivedLength / (50 * 1024 * 1024)) * 100)
             progressCallback({
               progress: estimatedProgress,
-              downloadedMB: parseFloat(downloadedMB),
-              totalMB: 'unknown',
-              status: `正在下载模型文件... ${downloadedMB}MB`
+              downloadedMB: downloadedMB,
+              totalMB: '45.2',
+              status: `模型载入中...`
             })
           }
         }
