@@ -27,6 +27,7 @@ class ResNet18Classifier {
     this.session = null
     this.isLoaded = false
     this.classNames = ['ID_1', 'ID_2', 'ID_3', 'ID_4', 'ID_5', 'ID_6', 'ID_7', 'ID_8', 'ID_9', 'ID_10']
+    this.loadingPromise = null // 防止并发加载
   }
 
   // 加载ResNet18 ONNX模型
@@ -43,6 +44,27 @@ class ResNet18Classifier {
       return true
     }
     
+    // 如果正在加载中，返回现有的Promise
+    if (this.loadingPromise) {
+      console.log('⏳ 模型正在载入中，等待完成...')
+      return this.loadingPromise
+    }
+    
+    // 创建加载Promise
+    this.loadingPromise = this._loadModelInternal(progressCallback)
+    
+    try {
+      const result = await this.loadingPromise
+      return result
+    } catch (error) {
+      // 失败时清除Promise以便重试
+      this.loadingPromise = null
+      throw error
+    }
+  }
+  
+  // 内部加载方法
+  async _loadModelInternal(progressCallback = null) {
     // 只使用成功的GitHub Pages路径
     const modelSources = [
       {
@@ -65,7 +87,7 @@ class ResNet18Classifier {
           progress: 0,
           downloadedMB: 0,
           totalMB: '45.2',
-          status: `尝试从${sourceType}加载...`
+          status: `正在载入模型...`
         })
       }
       
@@ -121,7 +143,7 @@ class ResNet18Classifier {
       }
       
       // 下载模型文件并显示进度
-      console.log('⬇️ 正在下载模型文件...')
+      console.log('⬇️ 正在载入模型文件...')
       const downloadStartTime = Date.now()
       
       const modelBuffer = await Promise.race([
@@ -300,7 +322,7 @@ class ResNet18Classifier {
               progress: parseFloat(progress),
               downloadedMB: parseFloat(downloadedMB),
               totalMB: parseFloat(totalMB),
-              status: '正在下载模型文件...'
+              status: `模型载入中: ${progress}% (${downloadedMB}MB/${totalMB}MB)`
             })
           }
         } else {

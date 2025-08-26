@@ -35,11 +35,12 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
             } else {
               setDownloadInfo(info)
               setLoadingProgress(30 + info.progress * 0.6) // 30-90% 为下载进度
-              setLoadingStatus(`下载模型: ${info.progress.toFixed(1)}% (${info.downloadedMB}/${info.totalMB}MB)`)
+              setLoadingStatus(`模型载入中: ${info.progress.toFixed(1)}% (${info.downloadedMB}/${info.totalMB}MB)`)
             }
           }
           
-          const success = await classifier.loadModel(progressCallback)
+          // 使用modelManager来避免重复下载
+          const success = await modelManager.preloadModel(progressCallback)
           
           if (success) {
             setLoadingStatus('模型加载成功!')
