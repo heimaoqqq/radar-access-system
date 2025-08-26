@@ -8,29 +8,115 @@ import os
 import sys
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision.models as models
 import json
 import subprocess
 import argparse
 from pathlib import Path
 
-def load_pytorch_model(model_path, num_classes=10):
-    """加载PyTorch模型"""
+class L2Norm(nn.Module):
+    """L2标准化层"""
+    def __init__(self, dim=1):
+        super(L2Norm, self).__init__()
+        self.dim = dim
+        
+    def forward(self, x):
+        return F.normalize(x, p=2, dim=self.dim)
+
+class ResNet18Contrastive(nn.Module):
+    """支持对比学习的ResNet18模型"""
     
-    # 创建模型结构
-    model = models.resnet18(pretrained=False)
-    num_features = model.fc.in_features
-    model.fc = nn.Sequential(
-        nn.Dropout(0.5),
-        nn.Linear(num_features, 256),
-        nn.ReLU(),
-        nn.Dropout(0.3),
-        nn.Linear(256, num_classes)
-    )
+    def __init__(self, num_classes, embedding_dim=128):
+        super(ResNet18Contrastive, self).__init__()
+        
+        # 加载预训练的ResNet18
+        self.backbone = models.resnet18(pretrained=True)
+        
+        # 更激进的解冻策略：解冻更多层以提高学习能力
+        for param in self.backbone.parameters():
+            param.requires_grad = False
+        
+        # 解冻后面几层用于微调
+        for name, param in self.backbone.named_parameters():
+            if 'layer4' in name or 'layer3' in name or 'layer2' in name:
+                param.requires_grad = True
+        
+        # 获取特征维度（在移除分类器之前）
+        num_features = self.backbone.fc.in_features
+        
+        # 移除原始分类器
+        self.backbone.fc = nn.Identity()
+        
+        # 添加特征嵌入层 - 完全匹配训练脚本架构
+        self.embedding = nn.Sequential(
+            nn.Linear(num_features, 256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, embedding_dim),
+            L2Norm(dim=1)  # L2标准化用于对比学习
+        )
+        
+        # 分类头 - 完全匹配训练脚本架构
+        self.classifier = nn.Sequential(
+            nn.Linear(embedding_dim, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, num_classes)
+        )
+        
+        # L2标准化
+        self.l2_norm = lambda x: F.normalize(x, p=2, dim=1)
+    
+    def forward(self, x):
+        features = self.backbone(x)
+        embeddings = self.embedding(features)
+        
+        if self.training:
+            # 训练时返回嵌入向量和分类结果
+            classification = self.classifier(embeddings)
+            return embeddings, classification
+        else:
+            # 推理时只返回分类结果
+            return self.classifier(embeddings)
+
+def load_pytorch_model(model_path, num_classes=10):
+    """加载PyTorch模型 - 自动检测模型类型和参数"""
+    
+    # 加载检查点
+    checkpoint = torch.load(model_path, map_location='cpu')
+    state_dict = checkpoint['model_state_dict']
+    
+    # 检测模型类型：是否包含对比学习结构
+    is_contrastive = any('backbone.' in key or 'embedding.' in key for key in state_dict.keys())
+    
+    if is_contrastive:
+        print("检测到对比学习模型，加载ResNet18Contrastive...")
+        
+        # 从权重自动检测embedding_dim
+        embedding_dim = 128  # 默认值
+        for key in state_dict.keys():
+            if 'embedding.3.weight' in key:  # embedding最后一层的权重
+                embedding_dim = state_dict[key].shape[0]
+                print(f"检测到embedding_dim: {embedding_dim}")
+                break
+        
+        model = ResNet18Contrastive(num_classes, embedding_dim=embedding_dim)
+    else:
+        print("检测到标准分类模型，加载标准ResNet18...")
+        # 创建标准模型结构
+        model = models.resnet18(pretrained=False)
+        num_features = model.fc.in_features
+        model.fc = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(num_features, 256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, num_classes)
+        )
     
     # 加载权重
-    checkpoint = torch.load(model_path, map_location='cpu')
-    model.load_state_dict(checkpoint['model_state_dict'])
+    model.load_state_dict(state_dict)
     model.eval()
     
     return model, checkpoint.get('class_names', [f'ID_{i+1}' for i in range(num_classes)])
@@ -61,46 +147,56 @@ def convert_to_onnx(model, onnx_path):
     
     print(f"ONNX模型已保存到: {onnx_path}")
 
-def convert_to_tensorflow(onnx_path, tf_path):
-    """转换ONNX到TensorFlow"""
-    
-    print("正在转换ONNX到TensorFlow...")
-    
+def convert_onnx_to_tensorflow(onnx_path, tf_output_path):
+    """转换ONNX到TensorFlow SavedModel格式"""
     try:
-        # 使用onnx-tf转换
-        cmd = f"onnx-tf convert -i {onnx_path} -o {tf_path}"
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        print("正在转换ONNX到TensorFlow...")
         
-        if result.returncode != 0:
-            print(f"转换失败: {result.stderr}")
-            return False
-            
-        print(f"TensorFlow模型已保存到: {tf_path}")
+        # 使用onnx-tf转换ONNX到TensorFlow SavedModel
+        import onnx
+        from onnx_tf.backend import prepare
+        
+        # 加载ONNX模型
+        onnx_model = onnx.load(onnx_path)
+        
+        # 转换为TensorFlow格式
+        tf_rep = prepare(onnx_model)
+        
+        # 保存为SavedModel格式
+        tf_rep.export_graph(tf_output_path)
+        
+        print(f"TensorFlow SavedModel已保存到: {tf_output_path}")
         return True
         
     except Exception as e:
-        print(f"转换过程出错: {e}")
+        print(f"转换失败: {e}")
+        print("提示: 请确保安装了兼容版本的onnx-tf")
         return False
 
 def convert_to_tfjs(tf_path, tfjs_path):
-    """转换TensorFlow到TensorFlow.js"""
-    
-    print("正在转换到TensorFlow.js格式...")
-    
+    """转换TensorFlow SavedModel到TensorFlow.js格式"""
     try:
-        # 使用tensorflowjs_converter转换
-        cmd = f"tensorflowjs_converter --input_format=tf_saved_model --output_format=tfjs_graph_model --quantize_float16 {tf_path} {tfjs_path}"
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        print("正在转换TensorFlow到TensorFlow.js...")
+        
+        # 使用tensorflowjs_converter转换SavedModel到TensorFlow.js
+        result = subprocess.run([
+            'tensorflowjs_converter',
+            '--input_format=tf_saved_model',
+            '--output_format=tfjs_graph_model',
+            '--strip_debug_ops=True',
+            '--quantize_float16=True',
+            tf_path,
+            tfjs_path
+        ], capture_output=True, text=True, timeout=600)
         
         if result.returncode != 0:
-            print(f"转换失败: {result.stderr}")
-            return False
+            raise Exception(result.stderr)
             
         print(f"TensorFlow.js模型已保存到: {tfjs_path}")
         return True
         
     except Exception as e:
-        print(f"转换过程出错: {e}")
+        print(f"转换失败: {e}")
         return False
 
 def create_model_metadata(class_names, tfjs_path):
@@ -218,7 +314,7 @@ def main():
         # 3. 转换为TensorFlow
         print("\n步骤3: 转换为TensorFlow格式")
         tf_path = os.path.join(args.temp_dir, 'tf_model')
-        if not convert_to_tensorflow(onnx_path, tf_path):
+        if not convert_onnx_to_tensorflow(onnx_path, tf_path):
             print("TensorFlow转换失败，请检查onnx-tf是否正确安装")
             return
         
