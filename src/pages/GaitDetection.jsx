@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import LoadingSpinner, { ProgressBar } from '../components/LoadingSpinner'
+import IdentityVerification from '../components/IdentityVerification'
 import { 
   User, 
   Radar, 
@@ -15,11 +16,12 @@ import {
 } from 'lucide-react'
 
 const GaitDetection = () => {
-  const [mode, setMode] = useState('identify')
+  const [mode, setMode] = useState('ai_verify')
   const [isCollecting, setIsCollecting] = useState(false)
   const [collectionProgress, setCollectionProgress] = useState(0)
   const [processedImage, setProcessedImage] = useState(null)
   const [identificationResult, setIdentificationResult] = useState(null)
+  const [aiVerificationResult, setAiVerificationResult] = useState(null)
   const [newUserForm, setNewUserForm] = useState({
     selectedUserId: '',
     name: '',
@@ -57,6 +59,19 @@ const GaitDetection = () => {
     })
     
     return userDatabase
+  }
+
+  // 获取完整的人员数据（供AI验证组件使用）
+  const getPersonnelData = () => {
+    const saved = localStorage.getItem('personnelData')
+    if (saved) {
+      return JSON.parse(saved)
+    }
+    return [
+      { id: 'ID_1', name: '张三', age: 78, gender: '男', room: '101', type: 'resident' },
+      { id: 'ID_2', name: '李四', age: 82, gender: '女', room: '102', type: 'resident' },
+      { id: 'ID_3', name: '王五', age: 75, gender: '男', room: '103', type: 'resident' }
+    ]
   }
   
   const [userDatabase, setUserDatabase] = useState(getUserDatabase)
@@ -180,7 +195,7 @@ const GaitDetection = () => {
     }
     
     // 阶段1: 显示"未检测到行人，等待中..."等待随机时间
-    const preloadWaitTime = Math.random() * 1500 + 1500 // 1.5-3秒随机
+    const preloadWaitTime = Math.random() * 1500 + 1000 // 1-2.5秒随机
     await new Promise(resolve => setTimeout(resolve, preloadWaitTime))
     
     // 预加载图像完成
@@ -231,6 +246,27 @@ const GaitDetection = () => {
     })
     
     setIsCollecting(false)
+  }
+
+  // 处理AI身份验证结果
+  const handleAiVerification = (result) => {
+    setAiVerificationResult(result)
+    
+    if (result.success) {
+      // 记录访问日志
+      const logEntry = {
+        type: 'ai_verification',
+        userId: result.identifiedId,
+        userName: result.person.name,
+        result: result.timePermission.allowed ? 'success' : 'time_restricted',
+        confidence: result.confidence,
+        timePermission: result.timePermission,
+        duration: '2.5s',
+        timestamp: new Date().toISOString()
+      }
+      
+      saveActivityLog(logEntry)
+    }
   }
 
   // 保存识别活动日志
@@ -323,6 +359,19 @@ const GaitDetection = () => {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
+              onClick={() => setMode('ai_verify')}
+              className={`px-6 py-2.5 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 shadow-sm hover:shadow-md ${
+                mode === 'ai_verify' 
+                  ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-purple-500/30' 
+                  : 'bg-white/80 backdrop-blur-sm text-gray-700 border-2 border-purple-200 hover:border-purple-300'
+              }`}
+            >
+              <Brain className="w-4 h-4" />
+              <span>AI身份验证</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setMode('identify')}
               className={`px-6 py-2.5 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 shadow-sm hover:shadow-md ${
                 mode === 'identify' 
@@ -330,8 +379,8 @@ const GaitDetection = () => {
                   : 'bg-white/80 backdrop-blur-sm text-gray-700 border-2 border-blue-200 hover:border-blue-300'
               }`}
             >
-              <Brain className="w-4 h-4" />
-              <span>智能识别</span>
+              <Radar className="w-4 h-4" />
+              <span>步态识别</span>
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -349,14 +398,28 @@ const GaitDetection = () => {
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 min-h-[800px]">
-          {/* 左侧 - 步态信息检测 */}
-          <motion.div 
+        {mode === 'ai_verify' ? (
+          // AI身份验证模式 - 单列布局
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="flex flex-col h-full"
+            className="max-w-4xl mx-auto"
           >
+            <IdentityVerification 
+              onVerificationComplete={handleAiVerification}
+              personnelData={getPersonnelData()}
+            />
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 min-h-[800px]">
+            {/* 左侧 - 步态信息检测 */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-col h-full"
+            >
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8 flex-1 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center">
@@ -451,7 +514,7 @@ const GaitDetection = () => {
                   >
                     <motion.div 
                       className="bg-gradient-to-r from-blue-500 to-indigo-500 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl cursor-pointer hover:shadow-3xl hover:scale-125 transition-all duration-300"
-                      whileHover={{ scale: 1.25 }}
+                      whileHover={{ scale: 1.50 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => {
                         if (mode === 'identify') {
@@ -747,6 +810,7 @@ const GaitDetection = () => {
 
           </motion.div>
         </div>
+        )}
       </div>
     </div>
   )

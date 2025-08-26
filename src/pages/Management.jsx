@@ -32,7 +32,27 @@ const Management = () => {
   const getInitialResidents = () => {
     const saved = localStorage.getItem('personnelData')
     if (saved) {
-      return JSON.parse(saved)
+      const data = JSON.parse(saved)
+      // 强制数据迁移：确保职工有正确的position和type字段
+      return data.map(resident => {
+        // 针对陈医生的数据修正
+        if (resident.name === '陈医生') {
+          return { ...resident, position: '主治医生', type: 'staff' }
+        }
+        // 针对护士小刘的数据修正
+        if (resident.name === '护士小刘') {
+          return { ...resident, position: '护士', type: 'staff' }
+        }
+        // 针对大白兔的数据修正（如果存在）
+        if (resident.name === '大白兔' && resident.type === 'staff') {
+          return { ...resident, position: resident.position || '主治医生', type: 'staff' }
+        }
+        // 确保所有数据都有type字段
+        if (!resident.type) {
+          resident.type = resident.position === '住户' ? 'resident' : 'staff'
+        }
+        return resident
+      })
     }
     return [
       {
@@ -120,6 +140,8 @@ const Management = () => {
     localStorage.setItem('personnelData', JSON.stringify(residents))
     // 触发storage事件，通知其他模块数据变更
     window.dispatchEvent(new Event('storage'))
+    // 调试日志：检查职工数据
+    console.log('Personnel data:', residents.filter(r => r.type === 'staff'))
   }, [residents])
 
   const [showAddModal, setShowAddModal] = useState(false)
@@ -376,6 +398,22 @@ const Management = () => {
               </div>
             </div>
             
+            {/* 信息独立显示 */}
+            <div className={`p-4 rounded-lg border mb-4 ${
+              selectedResident.type === 'staff'
+                ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200'
+                : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
+            }`}>
+              <p className={`text-sm font-medium mb-1 ${
+                selectedResident.type === 'staff' ? 'text-emerald-600' : 'text-blue-600'
+              }`}>信息</p>
+              <p className={`text-xl font-bold ${
+                selectedResident.type === 'staff' ? 'text-emerald-800' : 'text-blue-800'
+              }`}>
+                {selectedResident.type === 'staff' ? '💼 ' : '👤 '}{selectedResident.position}
+              </p>
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-500">年龄</p>
@@ -387,16 +425,19 @@ const Management = () => {
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-500">房间号</p>
-                <p className="text-lg font-semibold">{selectedResident.room}</p>
+                <div className="flex items-center mt-1">
+                  <Home className="h-4 w-4 mr-2 text-gray-400" />
+                  <p className="text-lg font-semibold">{selectedResident.room}</p>
+                </div>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-500">状态</p>
-                <span className={`px-2 py-1 text-sm rounded-full ${
+                <span className={`inline-flex items-center px-3 py-1 text-sm font-bold rounded-full mt-1 ${
                   selectedResident.status === 'in_facility' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-gray-100 text-gray-800'
+                    ? 'bg-gradient-to-r from-green-400 to-green-600 text-white' 
+                    : 'bg-gradient-to-r from-gray-400 to-gray-600 text-white'
                 }`}>
-                  {selectedResident.status === 'in_facility' ? '在院' : '不在院'}
+                  {selectedResident.status === 'in_facility' ? '✓ 在院' : '○ 不在院'}
                 </span>
               </div>
             </div>
@@ -615,15 +656,15 @@ const Management = () => {
       ) : (
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden border border-gray-100/50">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">人员信息</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">年龄/性别</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">职务/房间</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">联系方式</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">访问记录</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100">人员信息</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100">年龄/性别</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100">位置</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100">联系方式</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100">访问记录</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100">状态</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100">操作</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -633,38 +674,43 @@ const Management = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="hover:bg-gray-50 cursor-pointer"
+                  className={`hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
+                    resident.type === 'staff'
+                      ? 'border-l-4 border-l-emerald-500 hover:border-l-emerald-600'
+                      : 'border-l-4 border-l-blue-500 hover:border-l-blue-600'
+                  }`}
                   onClick={() => openDetailModal(resident)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                    <div className="flex">
+                      <div className="flex-shrink-0 flex flex-col items-center mr-4">
+                        <div className={`h-12 w-12 rounded-full flex items-center justify-center shadow-md ${
                           resident.type === 'staff' 
-                            ? 'bg-emerald-100' 
-                            : 'bg-blue-100'
+                            ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 ring-2 ring-emerald-200' 
+                            : 'bg-gradient-to-br from-blue-400 to-blue-600 ring-2 ring-blue-200'
                         }`}>
-                          <span className={`font-semibold text-sm ${
-                            resident.type === 'staff' 
-                              ? 'text-emerald-600' 
-                              : 'text-blue-600'
-                          }`}>
+                          <span className="font-bold text-lg text-white">
                             {resident.name.charAt(0)}
                           </span>
                         </div>
+                        <div className="text-xs text-gray-500 font-medium mt-1">{resident.id}</div>
                       </div>
-                      <div className="ml-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900">{resident.name}</span>
-                          <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                      <div className="flex-1 flex flex-col justify-center">
+                        <div className="flex items-baseline gap-2 mb-1">
+                          <span className="text-base font-semibold text-gray-900">{resident.name}</span>
+                          <span className={`px-2 py-0.5 text-xs rounded-full font-bold shadow-sm ${
                             resident.type === 'staff' 
-                              ? 'bg-emerald-100 text-emerald-700' 
-                              : 'bg-blue-100 text-blue-700'
+                              ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white' 
+                              : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
                           }`}>
-                            {resident.type === 'staff' ? '职工' : '住户'}
+                            {resident.type === 'staff' ? '🏥 职工' : '🏠 住户'}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-500">{resident.id}</div>
+                        {resident.type === 'staff' && resident.position && resident.position !== '住户' && (
+                          <div className="text-xs text-emerald-600 font-medium">
+                            {resident.position}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -672,10 +718,9 @@ const Management = () => {
                     {resident.age}岁 / {resident.gender}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{resident.position}</div>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Home className="h-4 w-4 mr-1" />
-                      {resident.room}
+                    <div className="flex items-center text-sm text-gray-700">
+                      <Home className="h-4 w-4 mr-2 text-gray-400" />
+                      <span className="font-medium">{resident.room}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -687,12 +732,12 @@ const Management = () => {
                     <div className="text-xs text-gray-500">最近: {resident.lastVisit}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
+                    <span className={`inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-full shadow-sm ${
                       resident.status === 'in_facility' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
+                        ? 'bg-gradient-to-r from-green-400 to-green-600 text-white' 
+                        : 'bg-gradient-to-r from-gray-400 to-gray-600 text-white'
                     }`}>
-                      {resident.status === 'in_facility' ? '在院' : '不在院'}
+                      {resident.status === 'in_facility' ? '✓ 在院' : '○ 不在院'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

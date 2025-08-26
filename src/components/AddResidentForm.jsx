@@ -54,7 +54,7 @@ const AddResidentForm = ({ onSubmit, onCancel, residents }) => {
     }
     
     if (!formState.position.trim()) {
-      newErrors.position = '职务不能为空'
+      newErrors.position = '信息不能为空'
     }
 
     return newErrors
@@ -222,10 +222,10 @@ const AddResidentForm = ({ onSubmit, onCancel, residents }) => {
             </div>
           </div>
 
-          {/* 职务 */}
+          {/* 信息 */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              职务<span className="text-red-500 ml-1">*</span>
+              信息<span className="text-red-500 ml-1">*</span>
             </label>
             {formState.type === 'staff' ? (
               <select
@@ -235,7 +235,8 @@ const AddResidentForm = ({ onSubmit, onCancel, residents }) => {
                   errors.position ? 'border-red-500' : 'border-gray-300'
                 }`}
               >
-                <option value="">请选择职务</option>
+                <option value="">请选择信息</option>
+                <option value="医生">医生</option>
                 <option value="主治医生">主治医生</option>
                 <option value="副主任医师">副主任医师</option>
                 <option value="主任医师">主任医师</option>
@@ -264,10 +265,10 @@ const AddResidentForm = ({ onSubmit, onCancel, residents }) => {
             )}
           </div>
 
-          {/* 房间号/工作地点 */}
+          {/* 房间号 */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              {formState.type === 'staff' ? '工作地点' : '房间号'}<span className="text-red-500 ml-1">*</span>
+              房间号<span className="text-red-500 ml-1">*</span>
             </label>
             <input
               type="text"

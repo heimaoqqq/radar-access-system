@@ -58,7 +58,7 @@ const EditResidentForm = ({ resident, onSubmit, onCancel }) => {
       errors.email = '请输入有效的邮箱地址'
     }
     if (!editFormState.position.trim()) {
-      errors.position = '职务不能为空'
+      errors.position = '信息不能为空'
     }
     
     if (Object.keys(errors).length > 0) {
@@ -178,10 +178,10 @@ const EditResidentForm = ({ resident, onSubmit, onCancel }) => {
             </div>
           </div>
 
-          {/* 职务 */}
+          {/* 信息 */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              职务<span className="text-red-500 ml-1">*</span>
+              信息<span className="text-red-500 ml-1">*</span>
             </label>
             {editFormState.type === 'staff' ? (
               <select
@@ -191,7 +191,8 @@ const EditResidentForm = ({ resident, onSubmit, onCancel }) => {
                   formErrors.position ? 'border-red-500' : 'border-gray-300'
                 }`}
               >
-                <option value="">请选择职务</option>
+                <option value="">请选择信息</option>
+                <option value="医生">医生</option>
                 <option value="主治医生">主治医生</option>
                 <option value="副主任医师">副主任医师</option>
                 <option value="主任医师">主任医师</option>
@@ -220,10 +221,10 @@ const EditResidentForm = ({ resident, onSubmit, onCancel }) => {
             )}
           </div>
 
-          {/* 房间号/工作地点 */}
+          {/* 房间号 */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              {editFormState.type === 'staff' ? '工作地点' : '房间号'}<span className="text-red-500 ml-1">*</span>
+              房间号<span className="text-red-500 ml-1">*</span>
             </label>
             <input
               type="text"
