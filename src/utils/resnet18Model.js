@@ -1,14 +1,24 @@
-// 切换到ONNX.js以避免TensorFlow转换问题
-import * as ort from 'onnxruntime-web';
+// 使用ONNX Runtime Web - 强制使用基础WASM后端
+import * as ort from 'onnxruntime-web/wasm';
 
-// 配置ONNX Runtime - 解决WASM文件加载问题
-// 使用基础WASM后端，避免SIMD线程化问题
-ort.env.wasm.numThreads = 1;
-ort.env.wasm.simd = false;
-// 强制使用基础WASM文件而不是SIMD版本
-ort.env.wasm.wasmPaths = {
-  'ort-wasm.wasm': 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/ort-wasm.wasm'
-};
+// 在模块级别配置ONNX Runtime环境
+// 这些设置必须在任何会话创建之前完成
+if (typeof window !== 'undefined') {
+  // 强制使用基础WASM，禁用所有高级特性
+  ort.env.wasm.numThreads = 1;
+  ort.env.wasm.simd = false;
+  ort.env.wasm.proxy = false;
+  
+  // 设置WASM文件的CDN路径
+  ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/';
+  
+  console.log('🔧 ONNX Runtime配置:', {
+    numThreads: ort.env.wasm.numThreads,
+    simd: ort.env.wasm.simd,
+    proxy: ort.env.wasm.proxy,
+    wasmPaths: ort.env.wasm.wasmPaths
+  });
+}
 
 class ResNet18Classifier {
   constructor() {
@@ -127,13 +137,20 @@ class ResNet18Classifier {
         })
       }
       
-      // 设置ONNX会话选项 - 使用基础WASM后端
+      // 设置ONNX会话选项 - 使用最简单的配置
       const sessionOptions = {
         executionProviders: ['wasm'],
-        graphOptimizationLevel: 'basic', // 降低优化级别避免问题
-        logSeverityLevel: 2, // 减少日志输出
+        graphOptimizationLevel: 'disabled',
+        logSeverityLevel: 0,
         enableProfiling: false
       }
+      
+      console.log('📋 会话配置:', sessionOptions);
+      console.log('🔧 当前WASM环境:', {
+        numThreads: ort.env.wasm.numThreads,
+        simd: ort.env.wasm.simd,
+        wasmPaths: ort.env.wasm.wasmPaths
+      });
       
       console.log('🔄 正在创建ONNX推理会话...')
       const sessionStartTime = Date.now()
