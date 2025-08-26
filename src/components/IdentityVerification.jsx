@@ -9,21 +9,42 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
   const [isVerifying, setIsVerifying] = useState(false)
   const [verificationResult, setVerificationResult] = useState(null)
   const [loadingProgress, setLoadingProgress] = useState(0)
+  const [loadingStatus, setLoadingStatus] = useState('初始化...')
+  const [downloadInfo, setDownloadInfo] = useState(null) // 存储下载详细信息
   const fileInputRef = useRef(null)
 
   // 初始化加载模型
   useEffect(() => {
     const initModel = async () => {
       try {
-        setLoadingProgress(30)
-        const success = await classifier.loadModel()
-        setLoadingProgress(100)
+        setLoadingStatus('连接模型服务器...')
+        setLoadingProgress(10)
+        
+        // 进度回调函数
+        const progressCallback = (info) => {
+          setDownloadInfo(info)
+          setLoadingProgress(30 + info.progress * 0.6) // 30-90% 为下载进度
+          setLoadingStatus(`下载模型: ${info.progress.toFixed(1)}% (${info.downloadedMB}/${info.totalMB}MB)`)
+        }
+        
+        const success = await classifier.loadModel(progressCallback)
+        
+        if (success) {
+          setLoadingStatus('模型加载成功!')
+          setLoadingProgress(100)
+        } else {
+          setLoadingStatus('模型加载失败，使用模拟模式')
+          setLoadingProgress(0)
+        }
+        
         setModelLoaded(success)
         if (!success) {
           console.warn('模型加载失败，将使用模拟模式')
         }
       } catch (error) {
         console.error('模型初始化失败:', error)
+        setLoadingStatus('加载失败: ' + error.message)
+        setLoadingProgress(0)
         setModelLoaded(false)
       }
     }
@@ -169,14 +190,20 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
       <div className="mb-6">
         <h3 className="text-xl font-bold text-gray-800 mb-2">AI身份验证</h3>
         <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${modelLoaded ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+          <div className={`w-3 h-3 rounded-full ${modelLoaded ? 'bg-green-500' : loadingProgress > 0 ? 'bg-blue-500' : 'bg-yellow-500'}`}></div>
           <span className="text-sm text-gray-600">
-            {modelLoaded ? 'ResNet18模型已就绪' : '模型加载中...'}
+            {modelLoaded ? 'ResNet18模型已就绪' : loadingStatus}
           </span>
-          {!modelLoaded && (
-            <div className="w-20 bg-gray-200 rounded-full h-1.5">
-              <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
-                   style={{ width: `${loadingProgress}%` }}></div>
+          {!modelLoaded && loadingProgress > 0 && (
+            <div className="flex-1 max-w-48">
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                     style={{ width: `${loadingProgress}%` }}></div>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {loadingProgress.toFixed(1)}% 
+                {downloadInfo && ` - ${downloadInfo.downloadedMB}/${downloadInfo.totalMB}MB`}
+              </div>
             </div>
           )}
         </div>

@@ -9,11 +9,11 @@ class ResNet18Classifier {
   }
 
   // 加载ResNet18 ONNX模型 - 使用GitHub Releases托管大文件
-  async loadModel() {
+  async loadModel(progressCallback = null) {
     const urls = [
       // GitHub Releases - 专门为大文件设计，下载速度快
       'https://github.com/heimaoqqq/radar-access-system/releases/download/v1.0.0/resnet18_identity.onnx',
-      // 本地备用（GitHub Pages对45MB文件支持有限）
+      // 本地文件备用（如果GitHub Releases不可用）
       '/models/resnet18_identity/resnet18_identity.onnx'
     ]
     
@@ -21,7 +21,7 @@ class ResNet18Classifier {
       const modelUrl = urls[i]
       console.log(`🔄 尝试从源 ${i + 1}/${urls.length} 加载模型`)
       console.log(`📍 模型地址: ${modelUrl}`)
-      const success = await this.tryLoadModel(modelUrl)
+      const success = await this.tryLoadModel(modelUrl, progressCallback)
       if (success) return true
     }
     
@@ -29,7 +29,7 @@ class ResNet18Classifier {
     return false
   }
   
-  async tryLoadModel(modelUrl) {
+  async tryLoadModel(modelUrl, progressCallback = null) {
     try {
       console.log('🚀 开始加载ResNet18 ONNX身份识别模型...')
       console.log('📍 模型源地址:', modelUrl)
@@ -37,7 +37,7 @@ class ResNet18Classifier {
       
       // 下载模型文件并显示进度
       console.log('⬇️ 正在下载模型文件...')
-      const modelBuffer = await this.downloadWithProgress(modelUrl)
+      const modelBuffer = await this.downloadWithProgress(modelUrl, progressCallback)
       console.log('✅ 模型文件下载完成!')
       
       // 设置ONNX会话选项
@@ -73,14 +73,15 @@ class ResNet18Classifier {
   }
 
   // 带进度显示的下载函数
-  async downloadWithProgress(url) {
+  async downloadWithProgress(url, progressCallback = null) {
     const response = await fetch(url)
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
 
     const contentLength = +response.headers.get('Content-Length')
-    console.log(`📦 文件总大小: ${(contentLength / 1024 / 1024).toFixed(1)}MB`)
+    const totalMB = (contentLength / 1024 / 1024).toFixed(1)
+    console.log(`📦 文件总大小: ${totalMB}MB`)
 
     const reader = response.body.getReader()
     const chunks = []
@@ -95,10 +96,22 @@ class ResNet18Classifier {
       receivedLength += value.length
 
       // 计算并显示进度
-      const progress = contentLength ? (receivedLength / contentLength * 100).toFixed(1) : 'unknown'
-      const downloadedMB = (receivedLength / 1024 / 1024).toFixed(1)
-      
-      console.log(`📈 下载进度: ${progress}% (${downloadedMB}MB)`)
+      if (contentLength) {
+        const progress = (receivedLength / contentLength * 100).toFixed(1)
+        const downloadedMB = (receivedLength / 1024 / 1024).toFixed(1)
+        
+        console.log(`📈 下载进度: ${progress}% (${downloadedMB}MB)`)
+        
+        // 调用UI进度回调
+        if (progressCallback) {
+          progressCallback({
+            progress: parseFloat(progress),
+            downloadedMB: parseFloat(downloadedMB),
+            totalMB: parseFloat(totalMB),
+            status: '正在下载模型文件...'
+          })
+        }
+      }
     }
 
     console.log('🔗 正在合并数据块...')
