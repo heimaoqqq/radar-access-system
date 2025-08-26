@@ -1,0 +1,7 @@
+# Git LFS 配置文件
+# 将ONNX模型文件设置为LFS追踪
+*.onnx filter=lfs diff=lfs merge=lfs -text
+# 其他大文件格式也可以用LFS
+*.pth filter=lfs diff=lfs merge=lfs -text
+*.h5 filter=lfs diff=lfs merge=lfs -text
+*.pb filter=lfs diff=lfs merge=lfs -text

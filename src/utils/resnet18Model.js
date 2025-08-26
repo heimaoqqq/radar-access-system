@@ -1,65 +1,80 @@
-import * as tf from '@tensorflow/tfjs'
+// 切换到ONNX.js以避免TensorFlow转换问题
+import * as ort from 'onnxruntime-web';
 
 class ResNet18Classifier {
   constructor() {
-    this.model = null
+    this.session = null
     this.isLoaded = false
     this.classNames = ['ID_1', 'ID_2', 'ID_3', 'ID_4', 'ID_5', 'ID_6', 'ID_7', 'ID_8', 'ID_9', 'ID_10']
   }
 
-  // 加载ResNet18模型
-  async loadModel(modelUrl = '/models/resnet18_identity/model.json') {
+  // 加载ResNet18 ONNX模型
+  async loadModel(modelUrl = '/models/resnet18_identity/resnet18_identity.onnx') {
     try {
-      console.log('正在加载ResNet18身份识别模型...')
-      this.model = await tf.loadLayersModel(modelUrl)
+      console.log('正在加载ResNet18 ONNX身份识别模型...')
+      this.session = await ort.InferenceSession.create(modelUrl)
       this.isLoaded = true
-      console.log('ResNet18模型加载成功')
+      console.log('ResNet18 ONNX模型加载成功')
+      console.log('模型输入:', this.session.inputNames)
+      console.log('模型输出:', this.session.outputNames)
       return true
     } catch (error) {
-      console.error('模型加载失败:', error)
+      console.error('ONNX模型加载失败:', error)
       return false
     }
   }
 
-  // 预处理图像：256x256 → 224x224 (ResNet18标准输入)
+  // 预处理图像：转换为ONNX格式输入 [1, 3, 224, 224]
   preprocessImage(imageElement) {
-    return tf.tidy(() => {
-      // 从图像元素创建tensor
-      let tensor = tf.browser.fromPixels(imageElement)
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    canvas.width = 224
+    canvas.height = 224
+    
+    // 调整图像大小到224x224
+    ctx.drawImage(imageElement, 0, 0, 224, 224)
+    
+    // 获取像素数据
+    const imageData = ctx.getImageData(0, 0, 224, 224)
+    const data = imageData.data
+    
+    // 转换为ONNX格式: [1, 3, 224, 224] (NCHW)
+    const input = new Float32Array(1 * 3 * 224 * 224)
+    
+    // ImageNet归一化参数
+    const mean = [0.485, 0.456, 0.406]
+    const std = [0.229, 0.224, 0.225]
+    
+    for (let i = 0; i < 224 * 224; i++) {
+      const pixelIndex = i * 4
       
-      // 调整尺寸从256x256到224x224
-      tensor = tf.image.resizeBilinear(tensor, [224, 224])
-      
-      // 归一化到[0,1]
-      tensor = tensor.div(255.0)
-      
-      // 标准化 (ImageNet标准)
-      const mean = tf.tensor([0.485, 0.456, 0.406])
-      const std = tf.tensor([0.229, 0.224, 0.225])
-      tensor = tensor.sub(mean).div(std)
-      
-      // 添加batch维度 [224, 224, 3] → [1, 224, 224, 3]
-      tensor = tensor.expandDims(0)
-      
-      return tensor
-    })
+      // RGB像素值归一化到[0,1]，然后标准化
+      input[i] = (data[pixelIndex] / 255.0 - mean[0]) / std[0]         // R
+      input[224 * 224 + i] = (data[pixelIndex + 1] / 255.0 - mean[1]) / std[1]  // G
+      input[224 * 224 * 2 + i] = (data[pixelIndex + 2] / 255.0 - mean[2]) / std[2]  // B
+    }
+    
+    return input
   }
 
   // 单张图像识别 - 返回最高概率的类别ID
   async predictSingle(imageElement) {
-    if (!this.isLoaded || !this.model) {
-      throw new Error('模型未加载')
+    if (!this.isLoaded || !this.session) {
+      throw new Error('ONNX模型未加载')
     }
 
     try {
       // 预处理图像
-      const inputTensor = this.preprocessImage(imageElement)
+      const inputData = this.preprocessImage(imageElement)
       
-      // 模型预测
-      const predictions = await this.model.predict(inputTensor).data()
+      // 创建ONNX输入tensor
+      const inputTensor = new ort.Tensor('float32', inputData, [1, 3, 224, 224])
+      const feeds = { input: inputTensor }
       
-      // 清理内存
-      inputTensor.dispose()
+      // 模型推理
+      const results = await this.session.run(feeds)
+      const outputTensor = results.output
+      const predictions = outputTensor.data
       
       // 找到最高概率的类别索引
       const maxIndex = predictions.indexOf(Math.max(...predictions))
@@ -72,7 +87,7 @@ class ResNet18Classifier {
         timestamp: new Date().toISOString()
       }
     } catch (error) {
-      console.error('图像识别失败:', error)
+      console.error('ONNX图像识别失败:', error)
       throw error
     }
   }
@@ -157,9 +172,9 @@ class ResNet18Classifier {
 
   // 释放模型资源
   dispose() {
-    if (this.model) {
-      this.model.dispose()
-      this.model = null
+    if (this.session) {
+      this.session.release()
+      this.session = null
       this.isLoaded = false
     }
   }
