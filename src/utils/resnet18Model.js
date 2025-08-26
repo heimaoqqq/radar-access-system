@@ -8,21 +8,24 @@ class ResNet18Classifier {
     this.classNames = ['ID_1', 'ID_2', 'ID_3', 'ID_4', 'ID_5', 'ID_6', 'ID_7', 'ID_8', 'ID_9', 'ID_10']
   }
 
-  // 加载ResNet18 ONNX模型 - 优先使用Hugging Face，GitHub Pages不支持45MB大文件
+  // 加载ResNet18 ONNX模型 - 使用GitHub Releases托管大文件
   async loadModel() {
     const urls = [
-      'https://huggingface.co/heimaoqqq/resnet18-gait-recognition/resolve/main/resnet18_identity.onnx',
+      // GitHub Releases - 专门为大文件设计，下载速度快
+      'https://github.com/heimaoqqq/radar-access-system/releases/download/v1.0.0/resnet18_identity.onnx',
+      // 本地备用（GitHub Pages对45MB文件支持有限）
       '/models/resnet18_identity/resnet18_identity.onnx'
     ]
     
     for (let i = 0; i < urls.length; i++) {
       const modelUrl = urls[i]
-      console.log(`尝试从源 ${i + 1}/${urls.length} 加载模型: ${modelUrl}`)
+      console.log(`🔄 尝试从源 ${i + 1}/${urls.length} 加载模型`)
+      console.log(`📍 模型地址: ${modelUrl}`)
       const success = await this.tryLoadModel(modelUrl)
       if (success) return true
     }
     
-    console.error('所有模型源都加载失败')
+    console.error('❌ 所有模型源都加载失败')
     return false
   }
   
