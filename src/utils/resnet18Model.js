@@ -8,8 +8,8 @@ class ResNet18Classifier {
     this.classNames = ['ID_1', 'ID_2', 'ID_3', 'ID_4', 'ID_5', 'ID_6', 'ID_7', 'ID_8', 'ID_9', 'ID_10']
   }
 
-  // 加载ResNet18 ONNX模型 - 使用外部CDN避免GitHub大文件限制
-  async loadModel(modelUrl = 'https://huggingface.co/heimaoqqq/resnet18-gait-recognition/resolve/main/resnet18_identity.onnx') {
+  // 加载ResNet18 ONNX模型
+  async loadModel(modelUrl = '/models/resnet18_identity/resnet18_identity.onnx') {
     try {
       console.log('正在加载ResNet18 ONNX身份识别模型...')
       this.session = await ort.InferenceSession.create(modelUrl)
