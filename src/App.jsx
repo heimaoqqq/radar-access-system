@@ -23,37 +23,29 @@ function App() {
   const [modelLoadStatus, setModelLoadStatus] = useState('idle')
   const [loadProgress, setLoadProgress] = useState(0)
 
-  // 应用启动时自动预加载模型
+  // 应用启动时立即开始下载模型
   useEffect(() => {
-    const preloadModel = async () => {
+    console.log('🚀 App 组件启动，立即开始模型下载...')
+    
+    // 直接启动下载，不等待任何检查
+    const startDownload = async () => {
       try {
         setModelLoadStatus('loading')
-        console.log('🚀 应用启动，开始预加载AI模型...')
-        
-        await modelManager.preloadModel((progress) => {
-          if (progress.fromCache) {
-            console.log('✨ 使用缓存的模型，无需重新下载')
-            setModelLoadStatus('cached')
-          } else {
-            setLoadProgress(progress.progress || 0)
-          }
-        })
-        
-        setModelLoadStatus('loaded')
-        console.log('✅ AI模型预加载完成，可在所有页面使用')
+        const result = await modelManager.preloadModel()
+        if (result) {
+          setModelLoadStatus('loaded')
+          console.log('✅ 模型加载成功')
+        } else {
+          setModelLoadStatus('error')
+        }
       } catch (error) {
-        console.error('❌ 模型预加载失败:', error)
+        console.error('❌ 模型加载失败:', error)
         setModelLoadStatus('error')
       }
     }
-
-    // 检查模型是否已加载
-    if (!modelManager.isModelLoaded()) {
-      preloadModel()
-    } else {
-      console.log('✨ 模型已在缓存中')
-      setModelLoadStatus('cached')
-    }
+    
+    // 不管是否已加载，都立即启动
+    startDownload()
   }, [])
 
   return (
