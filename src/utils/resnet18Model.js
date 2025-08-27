@@ -135,7 +135,7 @@ class ResNet18Classifier {
       // 通知UI开始下载
       if (progressCallback) {
         progressCallback({
-          progress: 2,
+          progress: 0,
           downloadedMB: 0,
           totalMB: 45.2,
           status: '连接服务器...'
@@ -303,12 +303,15 @@ class ResNet18Classifier {
     // 立即发送一个初始进度
     if (progressCallback) {
       progressCallback({
-        progress: 0,
+        progress: 1,
         downloadedMB: '0',
         totalMB: hasContentLength ? totalMB : '45.2',
         status: '开始下载模型...'
       })
     }
+    
+    // 确保立即更新一次进度
+    let firstUpdate = true
 
     while (true) {
       const { done, value } = await reader.read()
@@ -319,8 +322,9 @@ class ResNet18Classifier {
       receivedLength += value.length
 
       const now = Date.now()
-      // 限制进度更新频率（每50ms更新一次，提高实时性）
-      if (now - lastProgressTime >= 50) {
+      // 限制进度更新频率（每50ms更新一次，提高实时性）或第一次更新
+      if (firstUpdate || now - lastProgressTime >= 50) {
+        firstUpdate = false
         const downloadedMB = (receivedLength / 1024 / 1024).toFixed(1)
         
         if (hasContentLength) {

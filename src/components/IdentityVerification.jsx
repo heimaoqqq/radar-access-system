@@ -169,23 +169,35 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
       // 加载所有选中的图像
       console.log('📷 选中的图像路径:', selectedImagePaths)
       
-      const imagePromises = selectedImagePaths.map((path, index) => {
+      const loadImage = (id, filename) => {
         return new Promise((resolve, reject) => {
           const img = new Image()
+          const url = `/radar-access-system/dataset/${id}/${filename}`
+          
           img.onload = () => {
-            console.log(`✅ 图像${index + 1}加载成功: ${path}`)
+            console.log(`✅ 成功加载: ${filename}`)
+            // 提取完整的文件名（去掉扩展名）
+            const nameWithoutExt = filename.replace(/\.[^/.]+$/, "")
             resolve({
-              file: { name: path.split('/').pop() },
+              url: url,
               imageElement: img,
-              url: path
+              name: nameWithoutExt  // 存储完整的文件名（不含扩展名）
             })
           }
+          
           img.onerror = () => {
-            console.error(`❌ 图像${index + 1}加载失败: ${path}`)
-            reject(new Error(`无法加载图像: ${path}`))
+            console.error(`❌ 加载失败: ${filename}`)
+            reject(new Error(`Failed to load ${filename}`))
           }
-          img.src = path
+          
+          img.src = url
         })
+      }
+      
+      const imagePromises = selectedImagePaths.map((path, index) => {
+        const id = path.split('/')[3]
+        const filename = path.split('/').pop()
+        return loadImage(id, filename)
       })
       
       const loadedImages = await Promise.all(imagePromises)
@@ -200,11 +212,16 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
     }
   }
 
-  // 处理文件选择
+  // 处理手动文件选择
   const handleFileSelect = (event) => {
     const files = Array.from(event.target.files)
-    if (files.length !== 3) {
-      alert('请选择恰好3张图像文件')
+    
+    if (files.length === 0) {
+      return
+    }
+    
+    if (files.length > 5) {
+      alert('最多选择5张图像进行验证')
       return
     }
 
@@ -217,17 +234,24 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
     }
 
     // 读取文件为Image对象
-    const imagePromises = files.map(file => {
-      return new Promise((resolve, reject) => {
+    const imagePromises = files.map((file, index) => {
+      return new Promise((resolve) => {
         const reader = new FileReader()
         const img = new Image()
         
         reader.onload = (e) => {
-          img.onload = () => resolve({ file, imageElement: img, url: e.target.result })
-          img.onerror = reject
+          img.onload = () => {
+            // 提取文件名（去掉扩展名）
+            const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "")
+            resolve({
+              url: e.target.result,
+              imageElement: img,
+              name: nameWithoutExt  // 存储完整的文件名（不含扩展名）
+            })
+          }
           img.src = e.target.result
         }
-        reader.onerror = reject
+        
         reader.readAsDataURL(file)
       })
     })
@@ -245,8 +269,13 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
 
   // 开始身份验证
   const startVerification = async () => {
-    if (selectedImages.length !== 3) {
-      alert('请先选择3张图像')
+    if (selectedImages.length === 0) {
+      alert('请先选择至少1张图像')
+      return
+    }
+    
+    if (selectedImages.length > 5) {
+      alert('最多支持5张图像验证')
       return
     }
 
@@ -289,7 +318,9 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
             success: true,
             identifiedId: result.identifiedId,
             person: person,
-            confidence: result.confidence || 0.95,
+            confidence: result.predictions && result.predictions.length > 0
+              ? result.predictions.reduce((sum, p) => sum + p.confidence, 0) / result.predictions.length
+              : (result.confidence || 0.95),
             timePermission: timePermission,
             timestamp: result.timestamp || new Date().toISOString(),
             predictions: result.predictions || []
@@ -466,12 +497,21 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
               >
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </motion.svg>
-              <span className="text-sm font-medium text-green-800">
-                ResNet18模型已就绪
-              </span>
-              <span className="text-xs text-green-600 ml-auto">
+              <motion.span 
+                className="text-sm font-medium text-green-800"
+                animate={{ opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                ✨ 智能模型已成功加载
+              </motion.span>
+              <motion.span 
+                className="text-xs text-green-600 ml-auto"
+                initial={{ x: 10, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
                 准备进行身份验证
-              </span>
+              </motion.span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -549,7 +589,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
         />
         
         <p className="text-xs text-gray-500">
-          自动选择：智能抽取数据集图像 | 手动上传：选择3张JPG/PNG图像
+          自动选择：智能抽取数据集图像 | 手动上传：选择1-5张JPG/PNG图像进行验证
         </p>
       </div>
 
@@ -585,7 +625,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
       <div className="flex space-x-3 mb-6">
         <button
           onClick={startVerification}
-          disabled={selectedImages.length !== 3 || isVerifying || !modelLoaded}
+          disabled={selectedImages.length === 0 || selectedImages.length > 5 || isVerifying || !modelLoaded}
           className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors"
         >
           {isVerifying ? (
@@ -654,8 +694,8 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
                             <p className="text-xs font-medium text-gray-800">
                               {prediction?.predictedId || verificationResult.identifiedId}
                             </p>
-                            <p className="text-xs text-gray-600">
-                              {img.name ? img.name.split('/').pop() : `图像${index + 1}`}
+                            <p className="text-xs text-gray-600" title={img.name || `图像${index + 1}`}>
+                              {img.name || `图像${index + 1}`}
                             </p>
                             {prediction?.confidence && (
                               <p className="text-xs text-gray-500">
