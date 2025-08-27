@@ -80,15 +80,18 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
     checkModel()
   }, [])
 
-  // 从数据集自动选择图像
+  // 自动选择3张图像
   const autoSelectImages = async () => {
     setIsLoadingImages(true)
     setSelectedImages([])
-    setVerificationResult(null)
     
     try {
-      // 定义可用的ID列表
-      const availableIds = ['ID_1', 'ID_2', 'ID_3', 'ID_4', 'ID_5', 'ID_6', 'ID_7', 'ID_8', 'ID_9', 'ID_10']
+      // 根据人员管理中的数据动态确定可用ID
+      const availableIds = personnelData.map(person => person.id).filter(id => id)
+      
+      if (availableIds.length === 0) {
+        throw new Error('系统中没有可用的人员数据')
+      }
       
       // 随机选择一个主ID
       const primaryId = availableIds[Math.floor(Math.random() * availableIds.length)]
@@ -101,19 +104,26 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
       if (response.ok) {
         datasetIndex = await response.json()
       } else {
-        // 如果没有索引文件，手动构建
-        const imagePatterns = {
-          'ID_1': Array.from({length: 150}, (_, i) => `ID1_case1_1_Doppler${i+1}.jpg`),
-          'ID_2': Array.from({length: 150}, (_, i) => `ID2_case1_1_Doppler${i+1}.jpg`),
-          'ID_3': Array.from({length: 150}, (_, i) => `ID3_case1_1_Doppler${i+1}.jpg`),
-          'ID_4': Array.from({length: 150}, (_, i) => `ID4_case1_1_Doppler${i+1}.jpg`),
-          'ID_5': Array.from({length: 150}, (_, i) => `ID5_case1_1_Doppler${i+1}.jpg`),
-          'ID_6': Array.from({length: 150}, (_, i) => `ID6_case1_1_Doppler${i+1}.jpg`),
-          'ID_7': Array.from({length: 150}, (_, i) => `ID7_case1_1_Doppler${i+1}.jpg`),
-          'ID_8': Array.from({length: 150}, (_, i) => `ID8_case1_1_Doppler${i+1}.jpg`),
-          'ID_9': Array.from({length: 150}, (_, i) => `ID9_case1_1_Doppler${i+1}.jpg`),
-          'ID_10': Array.from({length: 150}, (_, i) => `ID10_case1_1_Doppler${i+1}.jpg`)
+        // 如果没有索引文件，根据人员数据动态构建
+        const imagePatterns = {}
+        personnelData.forEach(person => {
+          if (person.id) {
+            const idNum = person.id.replace('ID_', '')
+            imagePatterns[person.id] = Array.from(
+              {length: 150}, 
+              (_, i) => `ID${idNum}_case1_1_Doppler${i+1}.jpg`
+            )
+          }
+        })
+        
+        // 如果没有人员数据，使用默认的前4个ID
+        if (Object.keys(imagePatterns).length === 0) {
+          imagePatterns['ID_1'] = Array.from({length: 150}, (_, i) => `ID1_case1_1_Doppler${i+1}.jpg`)
+          imagePatterns['ID_2'] = Array.from({length: 150}, (_, i) => `ID2_case1_1_Doppler${i+1}.jpg`)
+          imagePatterns['ID_3'] = Array.from({length: 150}, (_, i) => `ID3_case1_1_Doppler${i+1}.jpg`)
+          imagePatterns['ID_4'] = Array.from({length: 150}, (_, i) => `ID4_case1_1_Doppler${i+1}.jpg`)
         }
+        
         datasetIndex = imagePatterns
       }
       
@@ -258,7 +268,12 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
 
     Promise.all(imagePromises)
       .then(images => {
-        setSelectedImages(images)
+        // 追加新图片而不是替换
+        setSelectedImages(prevImages => {
+          const combined = [...prevImages, ...images]
+          // 限制最多5张
+          return combined.slice(0, 5)
+        })
         setVerificationResult(null)
       })
       .catch(error => {
@@ -292,7 +307,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
       } else {
         // 模拟模式（用于测试）
         await new Promise(resolve => setTimeout(resolve, 2000))
-        const mockId = 'ID_' + Math.ceil(Math.random() * 10)
+        const mockId = 'ID_' + Math.ceil(Math.random() * 4)
         result = {
           success: Math.random() > 0.3, // 70%成功率
           identifiedId: mockId,
@@ -301,7 +316,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
           predictions: selectedImages.map((img, idx) => ({
             imageIndex: idx,
             predictedId: mockId,
-            confidence: 0.8 + Math.random() * 0.2
+            confidence: (0.8 + Math.random() * 0.15) // 限制在0.8-0.95之间
           }))
         }
       }
@@ -319,8 +334,8 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
             identifiedId: result.identifiedId,
             person: person,
             confidence: result.predictions && result.predictions.length > 0
-              ? result.predictions.reduce((sum, p) => sum + p.confidence, 0) / result.predictions.length
-              : (result.confidence || 0.95),
+              ? Math.min(1, result.predictions.reduce((sum, p) => sum + Math.min(1, p.confidence), 0) / result.predictions.length)
+              : Math.min(1, result.confidence || 0.95),
             timePermission: timePermission,
             timestamp: result.timestamp || new Date().toISOString(),
             predictions: result.predictions || []
@@ -342,7 +357,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
         // 验证失败
         const failResult = {
           success: false,
-          error: result.error || '验证失败，三张图像识别结果不一致',
+          error: result.error || '验证失败，图像识别结果不一致',
           timestamp: result.timestamp
         }
         setVerificationResult(failResult)

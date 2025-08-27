@@ -299,6 +299,7 @@ class ResNet18Classifier {
     const chunks = []
     let receivedLength = 0
     let lastProgressTime = 0  // 初始化为0，确保第一次就更新
+    let firstUpdate = true
 
     // 立即发送一个初始进度
     if (progressCallback) {
@@ -308,10 +309,9 @@ class ResNet18Classifier {
         totalMB: hasContentLength ? totalMB : '45.2',
         status: '开始下载模型...'
       })
+      // 强制立即触发UI更新
+      await new Promise(resolve => setTimeout(resolve, 10))
     }
-    
-    // 确保立即更新一次进度
-    let firstUpdate = true
 
     while (true) {
       const { done, value } = await reader.read()
@@ -329,12 +329,14 @@ class ResNet18Classifier {
         
         if (hasContentLength) {
           const progress = Math.min(99, (receivedLength / contentLength * 100)).toFixed(1)
-          console.log(`📈 下载进度: ${progress}% (${downloadedMB}MB/${totalMB}MB)`)
+          // 确保显示的下载大小不超过总大小
+          const displayDownloaded = Math.min(parseFloat(downloadedMB), parseFloat(totalMB)).toFixed(1)
+          console.log(`📈 下载进度: ${progress}% (${displayDownloaded}MB/${totalMB}MB)`)
           
           if (progressCallback) {
             progressCallback({
               progress: parseFloat(progress),
-              downloadedMB: downloadedMB,
+              downloadedMB: displayDownloaded,
               totalMB: totalMB,
               status: `下载中: ${progress}%`
             })
@@ -438,30 +440,31 @@ class ResNet18Classifier {
     }
   }
 
-  // 三张图像验证 - 严格一致性检查
+  // 多张图像验证 - 支持1-5张图像
   async verifyIdentity(imageElements) {
-    if (imageElements.length !== 3) {
-      throw new Error('必须提供3张图像')
+    if (imageElements.length === 0) {
+      throw new Error('至少需要提供1张图像')
+    }
+    if (imageElements.length > 5) {
+      throw new Error('最多支持5张图像')
     }
 
     try {
-      console.log('开始三张图像身份验证...')
+      console.log(`开始${imageElements.length}张图像身份验证...`)
       
-      // 并行处理3张图像
-      const predictions = await Promise.all([
-        this.predictSingle(imageElements[0]),
-        this.predictSingle(imageElements[1]),
-        this.predictSingle(imageElements[2])
-      ])
+      // 并行处理所有图像
+      const predictions = await Promise.all(
+        imageElements.map(img => this.predictSingle(img))
+      )
 
       console.log('识别结果:', predictions.map(p => `${p.classId}(${(p.confidence*100).toFixed(1)}%)`))
 
-      // 严格一致性检查
+      // 一致性检查 - 检查所有预测是否一致
       const classIds = predictions.map(p => p.classId)
-      const isConsistent = classIds[0] === classIds[1] && classIds[1] === classIds[2]
+      const isConsistent = classIds.every(id => id === classIds[0])
       
       // 计算平均置信度
-      const avgConfidence = predictions.reduce((sum, p) => sum + p.confidence, 0) / 3
+      const avgConfidence = predictions.reduce((sum, p) => sum + p.confidence, 0) / predictions.length
 
       return {
         success: isConsistent,
