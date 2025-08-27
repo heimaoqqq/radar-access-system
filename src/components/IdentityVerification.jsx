@@ -17,67 +17,37 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
 
   // 检查模型加载状态
   useEffect(() => {
-    const checkModel = async () => {
-      // 检查模型是否已加载
-      if (modelManager.isModelLoaded()) {
-        setLoadingStatus('模型已准备就绪!')
-        setLoadingProgress(100)
+    // 使用全局进度管理系统
+    const progressCallback = (globalProgress) => {
+      setDownloadInfo(globalProgress)
+      setLoadingProgress(globalProgress.progress || 0)
+      setLoadingStatus(globalProgress.status || '初始化...')
+      setIsLoading(globalProgress.isLoading || false)
+      
+      if (globalProgress.progress >= 100 || globalProgress.fromCache) {
         setModelLoaded(true)
-        console.log('✨ 使用预加载的模型')
-      } else {
-        try {
-          setIsLoading(true)
-          setLoadingStatus('连接模型服务器...')
-          setLoadingProgress(5)
-          
-          // 进度回调函数
-          const progressCallback = (info) => {
-            if (info.fromCache) {
-              setLoadingStatus('模型已准备就绪!')
-              setLoadingProgress(100)
-            } else {
-              setDownloadInfo(info)
-              // 直接使用实际进度
-              const actualProgress = Math.min(99, info.progress || 0)
-              setLoadingProgress(actualProgress)
-              
-              // 根据进度显示不同状态
-              if (actualProgress < 10) {
-                setLoadingStatus('正在连接服务器...')
-              } else if (actualProgress < 90) {
-                setLoadingStatus(`模型载入中: ${actualProgress.toFixed(0)}%`)
-              } else {
-                setLoadingStatus('正在初始化模型...')
-              }
-            }
-          }
-          
-          // 使用modelManager来避免重复下载
-          const success = await modelManager.preloadModel(progressCallback)
-          
-          if (success) {
-            setLoadingStatus('模型加载成功!')
-            setLoadingProgress(100)
-          } else {
-            setLoadingStatus('模型加载失败，使用模拟模式')
-            setLoadingProgress(0)
-          }
-          
-          setModelLoaded(success)
-          if (!success) {
-            console.warn('模型加载失败，将使用模拟模式')
-          }
-        } catch (error) {
-          console.error('模型初始化失败:', error)
-          setLoadingStatus('加载失败: ' + error.message)
-          setLoadingProgress(0)
-          setModelLoaded(false)
-        } finally {
-          setIsLoading(false)
-        }
       }
     }
-    checkModel()
+    
+    // 添加进度监听器
+    modelManager.addProgressCallback(progressCallback)
+    
+    // 检查当前状态
+    const currentProgress = modelManager.getGlobalProgress()
+    progressCallback(currentProgress)
+    
+    // 如果模型还没开始加载，就启动加载
+    if (!modelManager.isModelLoaded() && !modelManager.isPreloadingModel()) {
+      console.log('🚀 IdentityVerification: 启动模型加载')
+      modelManager.preloadModel().catch(error => {
+        console.error('IdentityVerification 模型加载失败:', error)
+      })
+    }
+    
+    // 清理函数
+    return () => {
+      modelManager.removeProgressCallback(progressCallback)
+    }
   }, [])
 
   // 自动选择3张图像
@@ -644,12 +614,30 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
           className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors"
         >
           {isVerifying ? (
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-              验证中...
-            </div>
+            <motion.div 
+              className="flex items-center justify-center"
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            >
+              <motion.div 
+                className="rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              ></motion.div>
+              <motion.span
+                animate={{ opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                🤖 AI智能识别中...
+              </motion.span>
+            </motion.div>
           ) : (
-            '开始验证'
+            <motion.span
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              🚀 开始验证
+            </motion.span>
           )}
         </button>
         <button

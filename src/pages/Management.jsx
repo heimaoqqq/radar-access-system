@@ -707,8 +707,10 @@ const Management = () => {
                           </span>
                         </div>
                         {resident.type === 'staff' && resident.position && resident.position !== '住户' && (
-                          <div className="text-xs text-emerald-600 font-medium">
-                            {resident.position}
+                          <div className="flex items-center gap-1">
+                            <div className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                              👩‍⚕️ {resident.position}
+                            </div>
                           </div>
                         )}
                       </div>
