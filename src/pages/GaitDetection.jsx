@@ -145,10 +145,34 @@ const GaitDetection = () => {
       const scenario = getCurrentDemoScenario()
       console.log(`演示模式第${demoStep + 1}次点击，场景:`, scenario.name)
       
-      // 准备演示图像
-      const demoImages = scenario.images.map(fileName => ({
+      // 准备演示图像 - 使用时间格式命名
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const day = String(now.getDate()).padStart(2, '0')
+      
+      // 根据场景设置不同的时间
+      let displayHour, displayMinute, displaySecond
+      if (scenario.id === 'resident_restricted') {
+        // 住户夜间限制 - 使用夜间时间（23:00左右）
+        displayHour = '23'
+        displayMinute = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+        displaySecond = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+      } else if (scenario.id === 'recognition_fail') {
+        // 陌生人检测 - 使用凌晨时间（02:00左右）
+        displayHour = '02'
+        displayMinute = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+        displaySecond = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+      } else {
+        // 正常时间（白天）
+        displayHour = String(now.getHours()).padStart(2, '0')
+        displayMinute = String(now.getMinutes()).padStart(2, '0')
+        displaySecond = String(now.getSeconds()).padStart(2, '0')
+      }
+      
+      const demoImages = scenario.images.map((fileName, index) => ({
         url: `/demo_images/${fileName}`,
-        fileName,
+        fileName: `${year}_${month}${day}_${displayHour}${displayMinute}${String(Number(displaySecond) + index).padStart(2, '0')}_${String(index + 1).padStart(3, '0')}.jpg`,
         userId: scenario.expectedResult.userId
       }))
       
