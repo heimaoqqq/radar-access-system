@@ -23,7 +23,7 @@ const getDemoScenarios = () => [
     images: ['2024_0830_141020_004.jpg', '2024_0830_141023_005.jpg', '2024_0830_141026_006.jpg'],
     expectedResult: {
       success: true,
-      userId: 'STAFF_1',
+      userId: 'ID_1',
       userType: 'staff',
       confidence: 0.975
     }
