@@ -196,7 +196,7 @@ const GaitDetection = () => {
         // 下一次点击使用下一个场景
         setDemoStep(prev => {
           const nextStep = prev + 1
-          console.log(`下次将使用步骤 ${nextStep}, 场景: ${getDemoScenarios()[nextStep % 4].name}`)
+          console.log(`下次将使用步骤 ${nextStep}`)
           return nextStep
         })
       }, 2000)
