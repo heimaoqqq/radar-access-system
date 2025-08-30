@@ -115,8 +115,9 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
       displaySecond = String(now.getSeconds()).padStart(2, '0')
     }
     
+    const baseUrl = import.meta.env.BASE_URL || '/'
     const recognitionDetails = scenario.images.map((fileName, index) => ({
-      url: `/demo_images/${fileName}`,
+      url: `${baseUrl}demo_images/${fileName}`,
       fileName: `${year}_${month}${day}_${displayHour}${displayMinute}${String(Number(displaySecond) + index).padStart(2, '0')}_${String(index + 1).padStart(3, '0')}.jpg`,
       confidence: expectedResult.confidence + (Math.random() - 0.5) * 0.01,
       userId: expectedResult.userId,
@@ -164,7 +165,13 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
         timePermission: {
           allowed: accessGranted,
           message: accessGranted ? '允许进入' : message
-        }
+        },
+        // 添加演示模式所需的图像信息
+        selectedImages: recognitionDetails.map(detail => ({
+          url: detail.url,
+          fileName: detail.fileName,
+          imageElement: null // 演示模式不需要实际的imageElement
+        }))
       }
     } else {
       return {
@@ -226,6 +233,16 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
       const result = createDemoResult(scenario)
       console.log('演示结果创建完成:', result)
       
+      // 设置演示模式的图像用于显示
+      const baseUrl = import.meta.env.BASE_URL || '/'
+      const demoImages = scenario.images.map((fileName, index) => ({
+        url: `${baseUrl}demo_images/${fileName}`,
+        fileName: `${result.recognitionDetails[index].fileName}`,
+        imageElement: null, // 演示模式不需要实际的imageElement
+        name: `${result.recognitionDetails[index].fileName}`
+      }))
+      
+      setSelectedImages(demoImages)
       setVerificationResult(result)
       onVerificationComplete?.(result)
       
