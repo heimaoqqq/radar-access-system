@@ -150,12 +150,23 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
       return {
         success: true,
         accessGranted,
-        person: userData || {
-          id: expectedResult.userId,
-          name: expectedResult.userType === 'staff' ? '李护士' : '张三',
-          type: expectedResult.userType,
-          room: expectedResult.userType === 'resident' ? '201室' : '护士站'
-        },
+        person: userData || (() => {
+          // 根据userId和userType返回正确的默认信息
+          if (expectedResult.userId === 'ID_1' && expectedResult.userType === 'staff') {
+            return { id: 'ID_1', name: '李护士', age: 28, gender: '女', room: '护士站', type: 'staff' }
+          } else if (expectedResult.userId === 'ID_2') {
+            return { id: 'ID_2', name: '李四', age: 82, gender: '女', room: '102室', type: 'resident' }
+          } else if (expectedResult.userId === 'ID_3') {
+            return { id: 'ID_3', name: '王五', age: 75, gender: '男', room: '103室', type: 'resident' }
+          } else {
+            return { 
+              id: expectedResult.userId, 
+              name: expectedResult.userType === 'staff' ? '李护士' : '张三', 
+              type: expectedResult.userType, 
+              room: expectedResult.userType === 'resident' ? '201室' : '护士站' 
+            }
+          }
+        })(),
         confidence: expectedResult.confidence,
         recognitionDetails: recognitionDetails,
         identifiedId: expectedResult.userId,
@@ -198,7 +209,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
     if (demoMode && demoScenarios.length > 0) {
       // 演示模式
       const scenario = demoScenarios[demoStep % demoScenarios.length]
-      console.log(`演示模式第${demoStep + 1}次点击，场景:`, scenario.name)
+      console.log(`演示模式第${demoStep + 1}次点击`)
       
       // 阶段1：检测行人
       setDetectionPhase('detecting')
@@ -210,7 +221,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
       
       // 阶段2：采集数据
       setDetectionPhase('collecting')
-      setDetectionMessage(`已采集步态图像 [${scenario.name}]`)
+      setDetectionMessage('已采集步态图像')
       setDetectionProgress(0)
       
       const collectingDuration = 2000
@@ -218,7 +229,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
       
       // 阶段3：步态分析
       setDetectionPhase('analyzing')
-      setDetectionMessage(`步态特征分析中... [${scenario.name}]`)
+      setDetectionMessage('步态特征分析中...')
       setDetectionProgress(0)
       
       const analyzingDuration = 2000
@@ -249,7 +260,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
       if (onDemoStepChange) {
         onDemoStepChange(prev => {
           const nextStep = prev + 1
-          console.log(`下次将使用步骤 ${nextStep}, 场景: ${demoScenarios[nextStep % demoScenarios.length].name}`)
+          console.log(`下次将使用步骤 ${nextStep}`)
           return nextStep
         })
       }
