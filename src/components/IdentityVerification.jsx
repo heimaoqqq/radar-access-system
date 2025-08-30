@@ -101,11 +101,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
     
     // 根据场景设置不同的时间
     let displayHour, displayMinute, displaySecond
-    if (scenario.id === 'resident_restricted') {
-      displayHour = '23'
-      displayMinute = String(Math.floor(Math.random() * 60)).padStart(2, '0')
-      displaySecond = String(Math.floor(Math.random() * 60)).padStart(2, '0')
-    } else if (scenario.id === 'recognition_fail') {
+    if (scenario.id === 'recognition_fail') {
       displayHour = '02'
       displayMinute = String(Math.floor(Math.random() * 60)).padStart(2, '0')
       displaySecond = String(Math.floor(Math.random() * 60)).padStart(2, '0')
@@ -129,24 +125,8 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
       const userDatabase = getUserDatabase()
       const userData = userDatabase[expectedResult.userId]
       
-      let accessGranted = true
-      let message = '身份验证通过，允许通行'
-      
-      // 住户时间限制检查
-      if (expectedResult.userType === 'resident') {
-        if (expectedResult.forceRestrictedTime) {
-          accessGranted = false
-          message = '夜间时段（22:00-06:00），住户通行受限'
-        } else {
-          const currentTime = new Date()
-          const hour = currentTime.getHours()
-          const isNightTime = hour >= 22 || hour < 6
-          if (isNightTime) {
-            accessGranted = false
-            message = '夜间时段（22:00-06:00），住户通行受限'
-          }
-        }
-      }
+      let accessGranted = true  
+      let message = '验证通过，允许进入'
       
       return {
         success: true,
