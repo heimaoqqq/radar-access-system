@@ -193,6 +193,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
         recognitionDetails: recognitionDetails,
         identifiedId: 'STRANGER',
         message: '验证失败，步态信息不匹配！',
+        error: '验证失败，步态信息不匹配！',
         timestamp: new Date().toISOString(),
         timePermission: {
           allowed: false,
