@@ -199,6 +199,16 @@ const GaitDetection = () => {
   const createDemoResult = (scenario) => {
     const { expectedResult } = scenario
     
+    // 创建识别详情（用于显示识别图像）
+    const recognitionDetails = scenario.images.map((fileName, index) => ({
+      url: `/demo_images/${fileName}`,
+      fileName: fileName,
+      confidence: expectedResult.confidence + (Math.random() - 0.5) * 0.01, // 轻微变化
+      userId: expectedResult.userId,
+      features: `特征点${index + 1}`,
+      matchScore: expectedResult.confidence * 0.95 + Math.random() * 0.05
+    }))
+    
     if (expectedResult.success) {
       const userData = getUserDatabase().find(user => user.id === expectedResult.userId)
       
@@ -231,6 +241,8 @@ const GaitDetection = () => {
           room: expectedResult.userType === 'resident' ? '201' : '工作间'
         },
         confidence: expectedResult.confidence,
+        recognitionDetails: recognitionDetails,
+        identifiedId: expectedResult.userId,
         message,
         timestamp: new Date().toISOString()
       }
@@ -240,6 +252,8 @@ const GaitDetection = () => {
         accessGranted: false,
         user: null,
         confidence: expectedResult.confidence,
+        recognitionDetails: recognitionDetails,
+        identifiedId: 'UNKNOWN',
         message: '身份识别失败，访问被拒绝',
         timestamp: new Date().toISOString()
       }
