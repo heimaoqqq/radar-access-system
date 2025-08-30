@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Radar } from 'lucide-react'
 import modelManager from '../utils/modelManager'
 
-const IdentityVerification = ({ onVerificationComplete, personnelData = [], autoMode = false }) => {
+const IdentityVerification = ({ onVerificationComplete, personnelData = [], autoMode = false, demoMode = false, demoStep = 0, onDemoStepChange, demoScenarios = [] }) => {
   const classifier = modelManager.getModel() // 使用全局单例模型
   const [modelLoaded, setModelLoaded] = useState(false)
   const [selectedImages, setSelectedImages] = useState([])
@@ -59,46 +59,224 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
 
   // 移除自动模式相关逻辑
 
-  // 新增：开始检测流程
+  // 创建演示结果
+  const createDemoResult = (scenario) => {
+    const { expectedResult } = scenario
+    
+    // 获取用户数据库
+    const getUserDatabase = () => {
+      const saved = localStorage.getItem('personnelData')
+      let managementUsers = []
+      
+      if (saved) {
+        managementUsers = JSON.parse(saved)
+      } else {
+        managementUsers = [
+          { id: 'ID_1', name: '张三', age: 78, gender: '男', room: '101', type: 'resident' },
+          { id: 'ID_2', name: '李四', age: 82, gender: '女', room: '102', type: 'resident' },
+          { id: 'ID_3', name: '王五', age: 75, gender: '男', room: '103', type: 'resident' },
+          { id: 'STAFF_1', name: '李护士', age: 35, gender: '女', room: '护士站', type: 'staff' }
+        ]
+      }
+      
+      const userDatabase = {}
+      managementUsers.forEach(user => {
+        userDatabase[user.id] = {
+          name: user.name,
+          age: user.age,
+          gender: user.gender,
+          room: user.type === 'staff' ? user.room : `${user.room}室`,
+          type: user.type || 'resident'
+        }
+      })
+      
+      return userDatabase
+    }
+    
+    // 创建识别详情
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    
+    // 根据场景设置不同的时间
+    let displayHour, displayMinute, displaySecond
+    if (scenario.id === 'resident_restricted') {
+      displayHour = '23'
+      displayMinute = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+      displaySecond = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+    } else if (scenario.id === 'recognition_fail') {
+      displayHour = '02'
+      displayMinute = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+      displaySecond = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+    } else {
+      displayHour = String(now.getHours()).padStart(2, '0')
+      displayMinute = String(now.getMinutes()).padStart(2, '0')
+      displaySecond = String(now.getSeconds()).padStart(2, '0')
+    }
+    
+    const recognitionDetails = scenario.images.map((fileName, index) => ({
+      url: `/demo_images/${fileName}`,
+      fileName: `${year}_${month}${day}_${displayHour}${displayMinute}${String(Number(displaySecond) + index).padStart(2, '0')}_${String(index + 1).padStart(3, '0')}.jpg`,
+      confidence: expectedResult.confidence + (Math.random() - 0.5) * 0.01,
+      userId: expectedResult.userId,
+      features: `特征点${index + 1}`,
+      matchScore: expectedResult.confidence * 0.95 + Math.random() * 0.05
+    }))
+    
+    if (expectedResult.success) {
+      const userDatabase = getUserDatabase()
+      const userData = userDatabase[expectedResult.userId]
+      
+      let accessGranted = true
+      let message = '身份验证通过，允许通行'
+      
+      // 住户时间限制检查
+      if (expectedResult.userType === 'resident') {
+        if (expectedResult.forceRestrictedTime) {
+          accessGranted = false
+          message = '夜间时段（22:00-06:00），住户通行受限'
+        } else {
+          const currentTime = new Date()
+          const hour = currentTime.getHours()
+          const isNightTime = hour >= 22 || hour < 6
+          if (isNightTime) {
+            accessGranted = false
+            message = '夜间时段（22:00-06:00），住户通行受限'
+          }
+        }
+      }
+      
+      return {
+        success: true,
+        accessGranted,
+        person: userData || {
+          id: expectedResult.userId,
+          name: expectedResult.userType === 'staff' ? '李护士' : '张三',
+          type: expectedResult.userType,
+          room: expectedResult.userType === 'resident' ? '201室' : '护士站'
+        },
+        confidence: expectedResult.confidence,
+        recognitionDetails: recognitionDetails,
+        identifiedId: expectedResult.userId,
+        message,
+        timestamp: new Date().toISOString(),
+        timePermission: {
+          allowed: accessGranted,
+          message: accessGranted ? '允许进入' : message
+        }
+      }
+    } else {
+      return {
+        success: false,
+        accessGranted: false,
+        person: null,
+        confidence: expectedResult.confidence,
+        recognitionDetails: recognitionDetails,
+        identifiedId: 'STRANGER',
+        message: '检测到陌生人，高准确率确认非授权人员，访问被拒绝',
+        timestamp: new Date().toISOString(),
+        timePermission: {
+          allowed: false,
+          message: '陌生人访问被拒绝'
+        }
+      }
+    }
+  }
+
+  // 新增：开始检测流程（支持演示模式）
   const startDetection = async () => {
     setVerificationResult(null)
     setSelectedImages([])
     
-    // 阶段1：检测行人 (1-2.5秒)
-    setDetectionPhase('detecting')
-    setDetectionMessage('未检测到行人，请稍等...')
-    setDetectionProgress(0)
-    
-    const detectingDuration = 1000 + Math.random() * 1500 // 1-2.5秒
-    await animateProgress(detectingDuration, (progress) => setDetectionProgress(progress))
-    
-    // 阶段2：采集数据 (3-4.5秒)
-    setDetectionPhase('collecting')
-    setDetectionMessage('正在采集数据...')
-    setDetectionProgress(0)
-    
-    const collectingDuration = 3000 + Math.random() * 1500 // 3-4.5秒
-    await animateProgress(collectingDuration, (progress) => setDetectionProgress(progress))
-    
-    // 阶段3：步态分析 (3-5秒)
-    setDetectionPhase('analyzing')
-    setDetectionMessage('正在进行步态分析...')
-    setDetectionProgress(0)
-    
-    const analyzingDuration = 3000 + Math.random() * 2000 // 3-5秒
-    await animateProgress(analyzingDuration, (progress) => setDetectionProgress(progress))
-    
-    // 阶段4：识别身份
-    setDetectionPhase('identifying')
-    setDetectionMessage('正在识别身份...')
-    
-    // 选择随机图像并进行验证
-    const images = await selectRandomImagesForVerification()
-    if (images && images.length > 0) {
-      await startVerificationWithImages(images)
+    if (demoMode && demoScenarios.length > 0) {
+      // 演示模式
+      const scenario = demoScenarios[demoStep % demoScenarios.length]
+      console.log(`演示模式第${demoStep + 1}次点击，场景:`, scenario.name)
+      
+      // 阶段1：检测行人
+      setDetectionPhase('detecting')
+      setDetectionMessage('雷达检测中...')
+      setDetectionProgress(0)
+      
+      const detectingDuration = 1000 + Math.random() * 500
+      await animateProgress(detectingDuration, (progress) => setDetectionProgress(progress))
+      
+      // 阶段2：采集数据
+      setDetectionPhase('collecting')
+      setDetectionMessage(`已采集步态图像 [${scenario.name}]`)
+      setDetectionProgress(0)
+      
+      const collectingDuration = 2000
+      await animateProgress(collectingDuration, (progress) => setDetectionProgress(progress))
+      
+      // 阶段3：步态分析
+      setDetectionPhase('analyzing')
+      setDetectionMessage(`步态特征分析中... [${scenario.name}]`)
+      setDetectionProgress(0)
+      
+      const analyzingDuration = 2000
+      await animateProgress(analyzingDuration, (progress) => setDetectionProgress(progress))
+      
+      // 阶段4：识别身份
+      setDetectionPhase('identifying')
+      setDetectionMessage('正在识别身份...')
+      
+      // 创建演示结果
+      const result = createDemoResult(scenario)
+      console.log('演示结果创建完成:', result)
+      
+      setVerificationResult(result)
+      onVerificationComplete?.(result)
+      
+      // 更新演示步骤
+      if (onDemoStepChange) {
+        onDemoStepChange(prev => {
+          const nextStep = prev + 1
+          console.log(`下次将使用步骤 ${nextStep}, 场景: ${demoScenarios[nextStep % demoScenarios.length].name}`)
+          return nextStep
+        })
+      }
+      
+      setDetectionPhase(null)
+    } else {
+      // 正常模式
+      // 阶段1：检测行人 (1-2.5秒)
+      setDetectionPhase('detecting')
+      setDetectionMessage('未检测到行人，请稍等...')
+      setDetectionProgress(0)
+      
+      const detectingDuration = 1000 + Math.random() * 1500 // 1-2.5秒
+      await animateProgress(detectingDuration, (progress) => setDetectionProgress(progress))
+      
+      // 阶段2：采集数据 (3-4.5秒)
+      setDetectionPhase('collecting')
+      setDetectionMessage('正在采集数据...')
+      setDetectionProgress(0)
+      
+      const collectingDuration = 3000 + Math.random() * 1500 // 3-4.5秒
+      await animateProgress(collectingDuration, (progress) => setDetectionProgress(progress))
+      
+      // 阶段3：步态分析 (3-5秒)
+      setDetectionPhase('analyzing')
+      setDetectionMessage('正在进行步态分析...')
+      setDetectionProgress(0)
+      
+      const analyzingDuration = 3000 + Math.random() * 2000 // 3-5秒
+      await animateProgress(analyzingDuration, (progress) => setDetectionProgress(progress))
+      
+      // 阶段4：识别身份
+      setDetectionPhase('identifying')
+      setDetectionMessage('正在识别身份...')
+      
+      // 选择随机图像并进行验证
+      const images = await selectRandomImagesForVerification()
+      if (images && images.length > 0) {
+        await startVerificationWithImages(images)
+      }
+      
+      setDetectionPhase(null)
     }
-    
-    setDetectionPhase(null)
   }
   
   // 进度动画辅助函数（非匀速）
