@@ -102,10 +102,9 @@ const GaitDetection = () => {
     } else {
       // 默认数据 - 演示模式扩展
       managementUsers = [
-        { id: 'ID_1', name: '张三', age: 78, gender: '男', room: '101', type: 'resident' },
+        { id: 'ID_1', name: '李护士', age: 28, gender: '女', room: '护士站', type: 'staff' },
         { id: 'ID_2', name: '李四', age: 82, gender: '女', room: '102', type: 'resident' },
-        { id: 'ID_3', name: '王五', age: 75, gender: '男', room: '103', type: 'resident' },
-        { id: 'STAFF_1', name: '李护士', age: 35, gender: '女', room: '护士站', type: 'staff' }
+        { id: 'ID_3', name: '王五', age: 75, gender: '男', room: '103', type: 'resident' }
       ]
     }
     
@@ -142,7 +141,7 @@ const GaitDetection = () => {
     if (demoMode) {
       // 演示模式：按顺序循环四种场景
       const scenario = getCurrentDemoScenario()
-      console.log(`演示模式第${demoStep + 1}次点击，场景:`, scenario.name)
+      console.log(`演示模式第${demoStep + 1}次点击`)
       
       // 准备演示图像 - 使用时间格式命名
       const now = new Date()
@@ -180,11 +179,11 @@ const GaitDetection = () => {
         await new Promise(resolve => setTimeout(resolve, 1000))
         setCollectedImages(prev => [...prev, demoImages[i]])
         setCurrentImageIndex(i + 1)
-        setDetectionMessage(`已采集 ${i + 1}/3 张步态图像 [${scenario.name}]`)
+        setDetectionMessage(`已采集 ${i + 1}/3 张步态图像`)
       }
       
       setDetectionPhase('analyzing')
-      setDetectionMessage(`步态特征分析中... [${scenario.name}]`)
+      setDetectionMessage('步态特征分析中...')
       
       // 模拟AI分析过程
       setTimeout(() => {
