@@ -142,7 +142,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
           // 检查是否强制夜间时间或实际夜间时间
           if (isNightTime || scenario.expectedResult.forceRestrictedTime) {
             accessGranted = false
-            message = '夜间时段（22:00-06:00），住户通行受限'
+            message = '禁止通行，住户仅可在06:30-20:30期间进出，如有紧急情况请联系工作人员'
           }
         }
       }
@@ -174,7 +174,8 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
         timestamp: new Date().toISOString(),
         timePermission: {
           allowed: accessGranted,
-          message: accessGranted ? '允许进入' : message
+          message: accessGranted ? '允许进入' : message,
+          reason: accessGranted ? null : '住户仅可在06:30-20:30期间进出'
         },
         // 添加演示模式所需的图像信息
         selectedImages: recognitionDetails.map(detail => ({
@@ -195,7 +196,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
         timestamp: new Date().toISOString(),
         timePermission: {
           allowed: false,
-          message: '陌生人访问被拒绝'
+          message: '验证失败，步态信息不匹配！'
         }
       }
     }
