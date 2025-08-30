@@ -940,6 +940,27 @@ const GaitDetection = () => {
               <User className="w-4 h-4" />
               <span>数据采集</span>
             </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                setDemoMode(!demoMode)
+                if (!demoMode) {
+                  setDemoStep(0) // 重置演示步骤
+                  setIdentificationResult(null) // 清除之前的结果
+                  setCollectedImages([])
+                  setDetectionPhase('ready')
+                }
+              }}
+              className={`px-6 py-2.5 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 shadow-sm hover:shadow-md ${
+                demoMode 
+                  ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-orange-500/30' 
+                  : 'bg-white/80 backdrop-blur-sm text-gray-700 border-2 border-orange-200 hover:border-orange-300'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              <span>演示模式</span>
+            </motion.button>
           </div>
         </motion.div>
 
@@ -957,7 +978,35 @@ const GaitDetection = () => {
             />
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 min-h-[800px]">
+          <>
+            {/* 演示模式状态面板 */}
+            {demoMode && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 bg-gradient-to-r from-orange-100 to-red-100 border-2 border-orange-200 rounded-2xl p-4 shadow-lg"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center">
+                      <Activity className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-orange-800">演示模式激活</h3>
+                      <p className="text-sm text-orange-600">
+                        当前场景：{getCurrentDemoScenario()?.name} (第{demoStep + 1}次演示)
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-orange-600">演示场景循环：1→2→3→4→1...</p>
+                    <p className="text-xs text-orange-500 mt-1">点击检测按钮查看不同场景</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 min-h-[800px]">
             {/* 左侧 - 步态信息检测 */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -2118,24 +2167,9 @@ const GaitDetection = () => {
 
           </motion.div>
         </div>
+          </>
         )}
       </div>
-
-      {/* 演示模式切换按钮 */}
-      <motion.button
-        onClick={() => setDemoMode(!demoMode)}
-        className={`fixed top-4 right-4 px-3 py-1 rounded text-sm font-medium z-50 ${
-          demoMode 
-            ? 'bg-blue-600 text-white' 
-            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-        }`}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        {demoMode ? '演示模式' : '正常模式'}
-      </motion.button>
-
-
     </div>
   )
 }
