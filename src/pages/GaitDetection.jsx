@@ -34,7 +34,7 @@ const getDemoScenarios = () => [
     images: ['2024_0830_140532_001.jpg', '2024_0830_140535_002.jpg', '2024_0830_140538_003.jpg'],
     expectedResult: {
       success: true,
-      userId: 'ID_1',
+      userId: 'ID_2',
       userType: 'resident',
       confidence: 0.981
     }
@@ -45,7 +45,7 @@ const getDemoScenarios = () => [
     images: ['2024_0830_140532_001.jpg', '2024_0830_140535_002.jpg', '2024_0830_140538_003.jpg'],
     expectedResult: {
       success: true,
-      userId: 'ID_1',
+      userId: 'ID_3',
       userType: 'resident',
       confidence: 0.979,
       forceRestrictedTime: true
@@ -53,7 +53,7 @@ const getDemoScenarios = () => [
   },
   {
     id: 'recognition_fail',
-    name: '识别失败',
+    name: '陌生人检测',
     images: ['2024_0830_141512_007.jpg', '2024_0830_141515_008.jpg', '2024_0830_141518_009.jpg'],
     expectedResult: {
       success: false,
