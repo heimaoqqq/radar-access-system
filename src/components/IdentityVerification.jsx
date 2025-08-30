@@ -161,7 +161,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [], auto
         confidence: expectedResult.confidence,
         recognitionDetails: recognitionDetails,
         identifiedId: 'STRANGER',
-        message: '检测到陌生人，高准确率确认非授权人员，访问被拒绝',
+        message: '验证失败，步态信息不匹配！',
         timestamp: new Date().toISOString(),
         timePermission: {
           allowed: false,
