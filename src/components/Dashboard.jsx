@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Radar } from 'lucide-react';
 import DataSimulator from '../utils/dataSimulator';
 
 const Dashboard = () => {
@@ -82,7 +83,7 @@ const Dashboard = () => {
         <MetricCard
           title="今日扫描"
           value={metrics ? metrics.totalScans.toLocaleString() : '--'}
-          icon="📡"
+          icon={<Radar className="w-5 h-5" />}
           color="from-purple-500 to-purple-600"
         />
         <MetricCard
@@ -144,7 +145,7 @@ const RadarDisplay = ({ data }) => {
   return (
     <div className="bg-gray-800 rounded-xl p-4 shadow-xl">
       <h3 className="text-white font-bold mb-4 flex items-center">
-        <span className="mr-2">📡</span> 雷达扫描
+        <Radar className="w-4 h-4 mr-2" /> 雷达扫描
       </h3>
       <div className="relative h-64 bg-black rounded-lg overflow-hidden">
         {/* 雷达网格 */}

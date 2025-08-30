@@ -87,9 +87,29 @@ const Statistics = () => {
       new Date(activity.timestamp).toDateString() === today
     )
     
-    const successfulToday = todayActivities.filter(activity => activity.result === 'success')
+    // 重新定义准确率计算：验证失败但使用同一ID图像时为判断失败，其他情况为成功
+    const correctRecognitions = todayActivities.filter(activity => {
+      // 成功验证的情况
+      if (activity.result === 'success' || activity.result === 'time_restricted') {
+        return true
+      }
+      
+      // 验证失败的情况：检查是否使用的是同一ID的图像
+      if (activity.result === 'failed' && activity.sourceImageIds && activity.sourceImageIds.length > 0) {
+        // 如果使用的图像来自同一个ID，且验证失败，则认为是判断错误
+        const uniqueImageIds = [...new Set(activity.sourceImageIds)]
+        if (uniqueImageIds.length === 1) {
+          // 使用的是同一ID的图像但验证失败，这是判断错误
+          return false
+        }
+      }
+      
+      // 其他情况（包括使用不同 ID 图像的失败）都认为是正确的
+      return true
+    })
+    
     const successRate = todayActivities.length > 0 
-      ? (successfulToday.length / todayActivities.length * 100).toFixed(1)
+      ? (correctRecognitions.length / todayActivities.length * 100).toFixed(1)
       : 0
     
     const avgTime = todayActivities.length > 0

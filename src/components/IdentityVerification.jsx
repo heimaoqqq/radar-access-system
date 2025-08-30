@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Radar } from 'lucide-react'
 import modelManager from '../utils/modelManager'
 
-const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) => {
+const IdentityVerification = ({ onVerificationComplete, personnelData = [], autoMode = false }) => {
   const classifier = modelManager.getModel() // 使用全局单例模型
   const [modelLoaded, setModelLoaded] = useState(false)
   const [selectedImages, setSelectedImages] = useState([])
@@ -13,7 +14,13 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
   const [downloadInfo, setDownloadInfo] = useState(null) // 存储下载详细信息
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingImages, setIsLoadingImages] = useState(false)
-  const fileInputRef = useRef(null)
+  const [collectionProgress, setCollectionProgress] = useState(0)
+  const [isCollecting, setIsCollecting] = useState(false)
+  
+  // 新增：检测阶段状态
+  const [detectionPhase, setDetectionPhase] = useState(null) // null, 'detecting', 'collecting', 'analyzing', 'identifying'
+  const [detectionProgress, setDetectionProgress] = useState(0)
+  const [detectionMessage, setDetectionMessage] = useState('')
 
   // 检查模型加载状态
   useEffect(() => {
@@ -50,8 +57,202 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
     }
   }, [])
 
-  // 自动选择3张图像
-  const autoSelectImages = async () => {
+  // 移除自动模式相关逻辑
+
+  // 新增：开始检测流程
+  const startDetection = async () => {
+    setVerificationResult(null)
+    setSelectedImages([])
+    
+    // 阶段1：检测行人 (1-2.5秒)
+    setDetectionPhase('detecting')
+    setDetectionMessage('未检测到行人，请稍等...')
+    setDetectionProgress(0)
+    
+    const detectingDuration = 1000 + Math.random() * 1500 // 1-2.5秒
+    await animateProgress(detectingDuration, (progress) => setDetectionProgress(progress))
+    
+    // 阶段2：采集数据 (3-4.5秒)
+    setDetectionPhase('collecting')
+    setDetectionMessage('正在采集数据...')
+    setDetectionProgress(0)
+    
+    const collectingDuration = 3000 + Math.random() * 1500 // 3-4.5秒
+    await animateProgress(collectingDuration, (progress) => setDetectionProgress(progress))
+    
+    // 阶段3：步态分析 (3-5秒)
+    setDetectionPhase('analyzing')
+    setDetectionMessage('正在进行步态分析...')
+    setDetectionProgress(0)
+    
+    const analyzingDuration = 3000 + Math.random() * 2000 // 3-5秒
+    await animateProgress(analyzingDuration, (progress) => setDetectionProgress(progress))
+    
+    // 阶段4：识别身份
+    setDetectionPhase('identifying')
+    setDetectionMessage('正在识别身份...')
+    
+    // 选择随机图像并进行验证
+    const images = await selectRandomImagesForVerification()
+    if (images && images.length > 0) {
+      await startVerificationWithImages(images)
+    }
+    
+    setDetectionPhase(null)
+  }
+  
+  // 进度动画辅助函数（非匀速）
+  const animateProgress = (duration, onProgress) => {
+    return new Promise((resolve) => {
+      const interval = 50 // 每50ms更新一次
+      const steps = duration / interval
+      let currentStep = 0
+      
+      const timer = setInterval(() => {
+        currentStep++
+        // 使用缓动函数实现非匀速进度
+        const t = currentStep / steps
+        // 使用ease-in-out曲线
+        const eased = t < 0.5 
+          ? 2 * t * t 
+          : -1 + (4 - 2 * t) * t
+        
+        // 添加随机波动使进度更自然
+        const randomFactor = 0.95 + Math.random() * 0.1
+        const progress = Math.min(eased * 100 * randomFactor, 100)
+        
+        onProgress(Math.round(progress))
+        
+        if (currentStep >= steps) {
+          onProgress(100) // 确保最后达到100%
+          clearInterval(timer)
+          resolve()
+        }
+      }, interval)
+    })
+  }
+
+  // 使用指定图像进行验证
+  const startVerificationWithImages = async (images) => {
+    if (!images || images.length === 0) {
+      console.log('没有图像，跳过验证')
+      return
+    }
+    
+    if (images.length > 5) {
+      alert('最多支持5张图像验证')
+      return
+    }
+
+    setIsVerifying(true)
+    setVerificationResult(null)
+
+    try {
+      const imageElements = images.map(img => img.imageElement)
+      let result
+
+      if (modelLoaded) {
+        // 使用真实模型
+        result = await classifier.verifyIdentity(imageElements)
+      } else {
+        // 模拟模式（用于测试）
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        const mockId = 'ID_' + Math.ceil(Math.random() * 4)
+        // 为每张图像生成独立的置信度
+        const predictions = images.map((img, idx) => ({
+          imageIndex: idx,
+          predictedId: mockId,
+          confidence: (0.8 + Math.random() * 0.15) // 限制在0.8-0.95之间
+        }))
+        // 计算平均置信度
+        const avgConfidence = predictions.reduce((sum, p) => sum + p.confidence, 0) / predictions.length
+        result = {
+          success: Math.random() > 0.3, // 70%成功率
+          identifiedId: mockId,
+          confidence: avgConfidence, // 使用平均置信度
+          timestamp: new Date().toISOString(),
+          predictions: predictions
+        }
+      }
+
+      if (result.success) {
+        // 查找对应人员信息
+        const person = personnelData.find(p => p.id === result.identifiedId)
+        
+        if (person) {
+          // 检查时间权限
+          const timePermission = classifier.checkTimePermission(person.type)
+          
+          const finalResult = {
+            ...result,
+            person: person,
+            timePermission: timePermission,
+            usedImages: images.map(img => {
+              if (img.name) return img.name
+              if (img.url && typeof img.url === 'string') return img.url.split('/').pop()
+              return '未知图片'
+            }).filter(Boolean)
+          }
+          setVerificationResult(finalResult)
+          onVerificationComplete?.(finalResult)
+        } else {
+          // 未找到对应人员
+          const unknownResult = {
+            ...result,
+            success: false,
+            error: '未找到对应人员信息'
+          }
+          setVerificationResult(unknownResult)
+          onVerificationComplete?.(unknownResult)
+        }
+      } else {
+        // 验证失败
+        // 从selectedImages中提取源图像的ID（基于文件路径）
+        const imageIds = images.map(img => {
+          if (img.url && img.url.includes('/dataset/')) {
+            const match = img.url.match(/\/dataset\/(ID_\d+)\//)
+            if (match) return match[1]
+          }
+          if (img.url && img.url.includes('/')) {
+            const pathParts = img.url.split('/')
+            if (pathParts.length >= 4) return pathParts[3] // 提取ID部分
+          }
+          return null
+        }).filter(Boolean)
+        
+        const failResult = {
+          success: false,
+          error: result.error || '验证失败，步态信息不匹配！',
+          timestamp: result.timestamp,
+          usedImages: images.map(img => {
+            if (img.name) return img.name
+            if (img.url && typeof img.url === 'string') return img.url.split('/').pop()
+            return '未知图片'
+          }).filter(Boolean),
+          sourceImageIds: imageIds
+        }
+        setVerificationResult(failResult)
+        onVerificationComplete?.({...failResult, 
+          message: '验证失败，步态信息不匹配！',
+          predictions: result.predictions
+        })
+      }
+    } catch (error) {
+      console.error('验证过程出错:', error)
+      const errorResult = {
+        success: false,
+        error: error.message || '验证过程出错',
+        timestamp: new Date().toISOString()
+      }
+      setVerificationResult(errorResult)
+      onVerificationComplete?.(errorResult)
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  // 为验证过程选择随机图像
+  const selectRandomImagesForVerification = async () => {
     setIsLoadingImages(true)
     setSelectedImages([])
     
@@ -113,8 +314,8 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
       selectedImagePaths.push(`/radar-access-system/dataset/${primaryId}/${primaryImages[indices[0]]}`)
       selectedImagePaths.push(`/radar-access-system/dataset/${primaryId}/${primaryImages[indices[1]]}`)
       
-      // 第3张图像：50%概率同ID，50%概率不同ID
-      const useSameId = Math.random() < 0.5
+      // 第3张图像：70%概率同ID，30%概率不同ID
+      const useSameId = Math.random() < 0.7
       
       if (useSameId) {
         // 从同一ID选择第3张（确保不重复）
@@ -183,16 +384,19 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
       const loadedImages = await Promise.all(imagePromises)
       setSelectedImages(loadedImages)
       console.log('🎉 所有图像加载完成')
+      return loadedImages // 返回加载的图像
       
     } catch (error) {
-      console.error('自动选择图像失败:', error)
-      alert('自动选择图像失败: ' + error.message)
+      console.error('选择图像失败:', error)
+      alert('选择图像失败: ' + error.message)
+      return null // 返回null表示失败
     } finally {
       setIsLoadingImages(false)
     }
   }
 
-  // 处理手动文件选择
+  // 移除手动文件选择
+  /*
   const handleFileSelect = (event) => {
     const files = Array.from(event.target.files)
     
@@ -251,11 +455,13 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
         alert('图像加载失败，请重试')
       })
   }
+  */
 
   // 开始身份验证
   const startVerification = async () => {
+    // 不需要检查图像，因为startDetection会自动选择图像
     if (selectedImages.length === 0) {
-      alert('请先选择至少1张图像')
+      console.log('没有选择的图像，跳过验证')
       return
     }
     
@@ -278,16 +484,20 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
         // 模拟模式（用于测试）
         await new Promise(resolve => setTimeout(resolve, 2000))
         const mockId = 'ID_' + Math.ceil(Math.random() * 4)
+        // 为每张图像生成独立的置信度
+        const predictions = selectedImages.map((img, idx) => ({
+          imageIndex: idx,
+          predictedId: mockId,
+          confidence: (0.8 + Math.random() * 0.15) // 限制在0.8-0.95之间
+        }))
+        // 计算平均置信度
+        const avgConfidence = predictions.reduce((sum, p) => sum + p.confidence, 0) / predictions.length
         result = {
           success: Math.random() > 0.3, // 70%成功率
           identifiedId: mockId,
-          confidence: 0.85 + Math.random() * 0.1,
+          confidence: avgConfidence, // 使用平均置信度
           timestamp: new Date().toISOString(),
-          predictions: selectedImages.map((img, idx) => ({
-            imageIndex: idx,
-            predictedId: mockId,
-            confidence: (0.8 + Math.random() * 0.15) // 限制在0.8-0.95之间
-          }))
+          predictions: predictions
         }
       }
 
@@ -318,27 +528,75 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
           const errorResult = {
             success: false,
             error: `识别到${result.identifiedId}但系统中无此人员信息`,
-            timestamp: result.timestamp
+            timestamp: result.timestamp,
+            usedImages: selectedImages.map(img => {
+              if (img.name) return img.name
+              if (img.url && typeof img.url === 'string') return img.url.split('/').pop()
+              return '未知图片'
+            }).filter(Boolean)
           }
           setVerificationResult(errorResult)
           onVerificationComplete?.(errorResult)
         }
       } else {
         // 验证失败
+        // 提取使用的图片ID信息用于准确率计算
+        const imageIds = selectedImages.map(img => {
+          if (img.name && img.name.includes('_')) {
+            return img.name.split('_')[0] // 提取ID部分
+          }
+          if (img.url && img.url.includes('/')) {
+            const pathParts = img.url.split('/')
+            if (pathParts.length >= 4) return pathParts[3] // 提取ID部分
+          }
+          return null
+        }).filter(Boolean)
+        
         const failResult = {
           success: false,
-          error: result.error || '验证失败，图像识别结果不一致',
-          timestamp: result.timestamp
+          error: result.error || '验证失败，步态信息不匹配！',
+          timestamp: result.timestamp,
+          usedImages: selectedImages.map(img => {
+            if (img.name) return img.name
+            if (img.url && typeof img.url === 'string') return img.url.split('/').pop()
+            return '未知图片'
+          }).filter(Boolean),
+          sourceImageIds: imageIds
         }
         setVerificationResult(failResult)
-        onVerificationComplete?.(failResult)
+        onVerificationComplete?.({...failResult, 
+          usedImages: selectedImages.map(img => {
+            if (img.name) return img.name
+            if (img.url && typeof img.url === 'string') return img.url.split('/').pop()
+            return '未知图片'
+          }).filter(Boolean),
+          sourceImageIds: imageIds
+        })
       }
     } catch (error) {
       console.error('验证过程出错:', error)
+      // 提取使用的图片ID信息用于准确率计算
+      const imageIds = selectedImages.map(img => {
+        if (img.name && img.name.includes('_')) {
+          return img.name.split('_')[0] // 提取ID部分
+        }
+        if (img.url && img.url.includes('/')) {
+          const pathParts = img.url.split('/')
+          if (pathParts.length >= 4) return pathParts[3] // 提取ID部分
+        }
+        return null
+      }).filter(Boolean)
+      
       const errorResult = {
         success: false,
         error: '验证过程出错: ' + error.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        usedImages: selectedImages.map(img => {
+          if (img.name) return img.name
+          if (img.url && typeof img.url === 'string') return img.url.split('/').pop()
+          return '未知图片'
+        }).filter(Boolean),
+        sourceImageIds: imageIds
       }
       setVerificationResult(errorResult)
       onVerificationComplete?.(errorResult)
@@ -351,16 +609,37 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
   const resetVerification = () => {
     setSelectedImages([])
     setVerificationResult(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
   }
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <div className="mb-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">AI身份验证</h3>
+        <h3 className="text-xl font-bold text-gray-800 mb-4">步态信息识别</h3>
         
+        {/* 自动模式下的数据采集进度 */}
+        {autoMode && isCollecting && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-gray-700">正在采集步态数据...</span>
+              <span className="text-sm font-bold text-blue-600">{collectionProgress}%</span>
+            </div>
+            <div className="bg-gray-200 rounded-full h-3 overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${collectionProgress}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-2">系统正在分析您的步态特征，请稍候...</p>
+          </motion.div>
+        )}
+
         {/* 模型加载状态 */}
         <AnimatePresence mode="wait">
           {!modelLoaded ? (
@@ -458,7 +737,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
-                        <span>下载中...</span>
+                        <span>模型载入中...</span>
                       </span>
                     </motion.div>
                   )}
@@ -495,88 +774,75 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                准备进行身份验证
+                准备进行步态识别
               </motion.span>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* 图像选择区域 */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <label className="block text-sm font-medium text-gray-700">
-            身份验证图像
-          </label>
-          <div className="flex space-x-2">
-            {/* 自动选择按钮 */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={autoSelectImages}
-              disabled={isLoadingImages || !modelLoaded}
-              className={`
-                px-4 py-2 rounded-lg text-sm font-medium transition-all
-                ${isLoadingImages || !modelLoaded
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-md'}
-              `}
-            >
-              {isLoadingImages ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                  </svg>
-                  加载中...
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  自动选择
-                </span>
-              )}
-            </motion.button>
-            
-            {/* 手动选择按钮 */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => fileInputRef.current?.click()}
-              disabled={!modelLoaded}
-              className={`
-                px-4 py-2 rounded-lg text-sm font-medium transition-all
-                ${!modelLoaded
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}
-              `}
-            >
-              <span className="flex items-center">
-                <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                手动上传
-              </span>
-            </motion.button>
-          </div>
-        </div>
-        
-        {/* 隐藏的文件输入 */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept=".jpg,.jpeg,.png"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-        
-        <p className="text-xs text-gray-500">
-          自动选择：智能抽取数据集图像 | 手动上传：选择1-5张JPG/PNG图像进行验证
-        </p>
-      </div>
+      {/* 检测阶段UI */}
+      {detectionPhase && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200"
+        >
+          {detectionPhase === 'detecting' ? (
+            // 检测行人阶段 - 使用圆形动画
+            <div className="flex flex-col items-center justify-center py-4">
+              {/* 圆形旋转动画 */}
+              <div className="relative w-20 h-20 mb-4">
+                {/* 外圈旋转 */}
+                <motion.div
+                  className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500 border-r-indigo-500"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                />
+                {/* 内圈反向旋转 */}
+                <motion.div
+                  className="absolute inset-2 rounded-full border-4 border-transparent border-b-blue-400 border-l-indigo-400"
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                />
+                {/* 中心图标 */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
+                    <Radar className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <span className="text-sm font-medium text-gray-700">{detectionMessage}</span>
+                <p className="text-xs text-gray-500 mt-2">系统正在扫描行人特征...</p>
+              </div>
+            </div>
+          ) : (
+            // 其他阶段 - 使用进度条
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-700">{detectionMessage}</span>
+                <span className="text-sm font-bold text-blue-600">{detectionProgress}%</span>
+              </div>
+              <div className="bg-gray-200 rounded-full h-3 overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${detectionProgress}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {detectionPhase === 'collecting' && '系统正在采集步态数据...'}
+                {detectionPhase === 'analyzing' && '系统正在分析步态特征...'}
+                {detectionPhase === 'identifying' && '系统正在识别身份信息...'}
+              </p>
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* 图像预览 */}
       <AnimatePresence>
@@ -609,44 +875,97 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
       {/* 操作按钮 */}
       <div className="flex space-x-3 mb-6">
         <button
-          onClick={startVerification}
-          disabled={selectedImages.length === 0 || selectedImages.length > 5 || isVerifying || !modelLoaded}
+          onClick={startDetection}
+          disabled={isVerifying || !modelLoaded || detectionPhase !== null}
           className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors"
         >
-          {isVerifying ? (
+          {isVerifying || detectionPhase ? (
             <motion.div 
               className="flex items-center justify-center"
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
+              animate={{ scale: [1, 1.02, 1] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
             >
               <motion.div 
-                className="rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              ></motion.div>
-              <motion.span
-                animate={{ opacity: [0.7, 1, 0.7] }}
-                transition={{ duration: 2, repeat: Infinity }}
+                className="relative mr-3"
               >
-                🤖 AI智能识别中...
-              </motion.span>
+                <motion.div
+                  className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
+                  animate={{ 
+                    scale: [1, 1.1, 1] 
+                  }}
+                  transition={{ 
+                    scale: { duration: 1.5, repeat: Infinity }
+                  }}
+                >
+                  <Radar className="w-8 h-8 text-white" />
+                </motion.div>
+                <motion.div
+                  className="absolute -inset-2 rounded-full border-2 border-blue-300"
+                  animate={{ 
+                    scale: [1, 1.3, 1],
+                    opacity: [0.5, 0.1, 0.5]
+                  }}
+                  transition={{ duration: 1.8, repeat: Infinity }}
+                />
+                <motion.div
+                  className="absolute -inset-3 rounded-full border border-blue-200"
+                  animate={{ 
+                    scale: [1, 1.5, 1],
+                    opacity: [0.3, 0.05, 0.3]
+                  }}
+                  transition={{ duration: 2.2, repeat: Infinity, delay: 0.5 }}
+                />
+              </motion.div>
+              <motion.div
+                animate={{ 
+                  opacity: [0.8, 1, 0.8],
+                  scale: [1, 1.05, 1]
+                }}
+                transition={{ duration: 1.8, repeat: Infinity }}
+                className="flex items-center gap-2"
+              >
+                <motion.div
+                  animate={{ 
+                    rotate: [0, 360],
+                    scale: [1, 1.1, 1]
+                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="relative"
+                >
+                  <div className="w-5 h-5 rounded-full border-2 border-blue-500 relative">
+                    <div className="absolute inset-1 rounded-full border border-blue-500 opacity-60"></div>
+                    <div className="absolute top-1/2 left-1/2 w-0.5 h-2 bg-blue-500 origin-bottom -translate-x-0.5 -translate-y-2"></div>
+                  </div>
+                </motion.div>
+                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold">
+                  {detectionPhase === 'detecting' && '检测行人中...'}
+                  {detectionPhase === 'collecting' && '采集数据中...'}
+                  {detectionPhase === 'analyzing' && '分析步态中...'}
+                  {detectionPhase === 'identifying' && '识别身份中...'}
+                  {!detectionPhase && '雷达扫描识别中...'}
+                </span>
+              </motion.div>
             </motion.div>
           ) : (
             <motion.span
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              className="flex items-center justify-center gap-2"
             >
-              🚀 开始验证
+              <Radar className="w-5 h-5" />
+              开始检测
             </motion.span>
           )}
         </button>
-        <button
-          onClick={resetVerification}
-          disabled={isVerifying}
-          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          重置
-        </button>
+        {selectedImages.length > 0 && (
+          <button
+            onClick={resetVerification}
+            disabled={isVerifying || detectionPhase !== null}
+            className="px-6 py-2 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-700 font-medium rounded-lg transition-colors"
+          >
+            重置
+          </button>
+        )}
       </div>
 
       {/* 验证结果 */}
@@ -674,7 +993,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
                   <p><strong>识别ID:</strong> {verificationResult.identifiedId}</p>
                   <p><strong>姓名:</strong> {verificationResult.person?.name}</p>
                   <p><strong>类型:</strong> {verificationResult.person?.type === 'staff' ? '职工' : '住户'}</p>
-                  <p><strong>置信度:</strong> {(verificationResult.confidence * 100).toFixed(1)}%</p>
+                  <p><strong>置信度:</strong> {Math.min((verificationResult.confidence * 100), 100).toFixed(1)}%</p>
                   
                   {/* 显示每张图片的识别结果 */}
                   <div className="mt-3 border-t pt-3">
@@ -688,7 +1007,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
                               <img
                                 src={img.url}
                                 alt={`图像 ${index + 1}`}
-                                className="w-20 h-20 object-cover rounded border-2 border-gray-300 mx-auto"
+                                className="w-64 h-64 object-cover rounded border-2 border-gray-300 mx-auto"
                               />
                               <span className="absolute top-0 left-0 bg-blue-600 text-white text-xs px-1 rounded-tl">
                                 {index + 1}
@@ -702,7 +1021,7 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
                             </p>
                             {prediction?.confidence && (
                               <p className="text-xs text-gray-500">
-                                置信度: {(prediction.confidence * 100).toFixed(1)}%
+                                置信度: {Math.min((prediction.confidence * 100), 100).toFixed(1)}%
                               </p>
                             )}
                           </div>
@@ -732,7 +1051,41 @@ const IdentityVerification = ({ onVerificationComplete, personnelData = [] }) =>
                   <h4 className="font-semibold text-red-800">验证失败</h4>
                 </div>
                 <p className="text-sm text-red-700">{verificationResult.error}</p>
-                <p className="text-xs text-red-600 mt-1">请重新选择图像重试</p>
+                
+                {/* 图像识别详情 */}
+                <div className="mt-3 border-t pt-3">
+                  <p className="font-medium text-gray-700 mb-2">图像识别详情:</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {selectedImages.map((img, index) => {
+                      const prediction = verificationResult.predictions?.[index]
+                      return (
+                        <div key={index} className="text-center">
+                          <div className="relative mb-2">
+                            <img
+                              src={img.url}
+                              alt={`验证图像 ${index + 1}`}
+                              className="w-64 h-64 object-cover rounded border-2 border-red-200"
+                            />
+                            <span className="absolute top-0 left-0 bg-red-600 text-white text-xs px-1 rounded-tl">
+                              {index + 1}
+                            </span>
+                          </div>
+                          <p className="text-xs font-medium text-gray-800">
+                            {prediction?.predictedId || '识别失败'}
+                          </p>
+                          <p className="text-xs text-gray-600" title={img.name || `图像${index + 1}`}>
+                            {img.name || `图像${index + 1}`}
+                          </p>
+                          {prediction?.confidence && (
+                            <p className="text-xs text-gray-500">
+                              置信度: {Math.min((prediction.confidence * 100), 100).toFixed(1)}%
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
             )}
           </motion.div>

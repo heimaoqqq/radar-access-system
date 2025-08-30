@@ -683,36 +683,40 @@ const Management = () => {
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex">
-                      <div className="flex-shrink-0 flex flex-col items-center mr-4">
-                        <div className={`h-12 w-12 rounded-full flex items-center justify-center shadow-md ${
-                          resident.type === 'staff' 
-                            ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 ring-2 ring-emerald-200' 
-                            : 'bg-gradient-to-br from-blue-400 to-blue-600 ring-2 ring-blue-200'
-                        }`}>
-                          <span className="font-bold text-lg text-white">
-                            {resident.name.charAt(0)}
-                          </span>
-                        </div>
-                        <div className="text-xs text-gray-500 font-medium mt-1">{resident.id}</div>
-                      </div>
-                      <div className="flex-1 flex flex-col justify-center">
-                        <div className="flex items-baseline gap-2 mb-1">
-                          <span className="text-base font-semibold text-gray-900">{resident.name}</span>
-                          <span className={`px-2 py-0.5 text-xs rounded-full font-bold shadow-sm ${
+                      <div className="flex-shrink-0 relative mr-4 w-16">
+                        <div className="flex items-center justify-center">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center shadow-md ${
                             resident.type === 'staff' 
-                              ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white' 
-                              : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+                              ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 ring-2 ring-emerald-200' 
+                              : 'bg-gradient-to-br from-blue-400 to-blue-600 ring-2 ring-blue-200'
                           }`}>
-                            {resident.type === 'staff' ? '🏥 职工' : '🏠 住户'}
-                          </span>
-                        </div>
-                        {resident.type === 'staff' && resident.position && resident.position !== '住户' && (
-                          <div className="flex items-center gap-1">
-                            <div className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                              👩‍⚕️ {resident.position}
-                            </div>
+                            <span className="font-bold text-base text-white">
+                              {resident.name.charAt(0)}
+                            </span>
                           </div>
-                        )}
+                        </div>
+                        <div className="absolute left-1/2 transform -translate-x-1/2 text-gray-500 font-medium mt-1 whitespace-nowrap" style={{fontSize: '8px'}}>{resident.id}</div>
+                      </div>
+                      <div className="flex-1 min-w-0 flex items-center">
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-base font-semibold text-gray-900 block">{resident.name}</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1 ml-3">
+                            <span className={`px-3 py-1 text-xs rounded-full font-bold shadow-sm whitespace-nowrap ${
+                              resident.type === 'staff' 
+                                ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white' 
+                                : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+                            }`}>
+                              {resident.type === 'staff' ? '🏥 职工' : '🏠 住户'}
+                            </span>
+                            {resident.type === 'staff' && resident.position && resident.position !== '住户' && (
+                              <span className="text-xs text-emerald-700 font-medium bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 whitespace-nowrap">
+                                👩‍⚕️ {resident.position}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </td>

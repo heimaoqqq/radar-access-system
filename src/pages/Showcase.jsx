@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Radar } from 'lucide-react';
 import DataSimulator from '../utils/dataSimulator';
 
 const Showcase = () => {
@@ -17,7 +18,7 @@ const Showcase = () => {
     {
       title: '非接触式识别',
       description: '基于毫米波雷达的步态识别，无需物理接触或视觉图像',
-      icon: '📡',
+      icon: <Radar className="w-8 h-8" />,
       benefits: ['保护隐私', '全天候工作', '无需配合']
     },
     {
