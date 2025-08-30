@@ -47,7 +47,8 @@ const getDemoScenarios = () => [
       success: true,
       userId: 'ID_3',
       userType: 'resident',
-      confidence: 0.979
+      confidence: 0.979,
+      forceRestrictedTime: true
     }
   },
   {
