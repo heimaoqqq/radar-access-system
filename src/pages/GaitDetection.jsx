@@ -19,7 +19,7 @@ import {
 const getDemoScenarios = () => [
   {
     id: 'staff_success', 
-    name: '职工识别成功',
+    name: '',
     images: ['2024_0830_141020_004.jpg', '2024_0830_141023_005.jpg', '2024_0830_141026_006.jpg'],
     expectedResult: {
       success: true,
@@ -30,7 +30,7 @@ const getDemoScenarios = () => [
   },
   {
     id: 'resident_success',
-    name: '住户识别成功',
+    name: '',
     images: ['2024_0830_140532_001.jpg', '2024_0830_140535_002.jpg', '2024_0830_140538_003.jpg'],
     expectedResult: {
       success: true,
@@ -41,19 +41,18 @@ const getDemoScenarios = () => [
   },
   {
     id: 'resident_restricted',
-    name: '住户夜间限制',
+    name: '',
     images: ['2024_0830_140532_001.jpg', '2024_0830_140535_002.jpg', '2024_0830_140538_003.jpg'],
     expectedResult: {
       success: true,
       userId: 'ID_3',
       userType: 'resident',
-      confidence: 0.979,
-      forceRestrictedTime: true
+      confidence: 0.979
     }
   },
   {
     id: 'recognition_fail',
-    name: '陌生人检测',
+    name: '',
     images: ['2024_0830_141512_007.jpg', '2024_0830_141515_008.jpg', '2024_0830_141518_009.jpg'],
     expectedResult: {
       success: false,
