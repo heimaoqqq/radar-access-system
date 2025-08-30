@@ -57,9 +57,9 @@ const getDemoScenarios = () => [
     images: ['2024_0830_141512_007.jpg', '2024_0830_141515_008.jpg', '2024_0830_141518_009.jpg'],
     expectedResult: {
       success: false,
-      userId: 'UNKNOWN',
-      userType: 'unknown',
-      confidence: 0.32
+      userId: 'STRANGER',
+      userType: 'stranger',
+      confidence: 0.978
     }
   }
 ]
@@ -143,6 +143,7 @@ const GaitDetection = () => {
     if (demoMode) {
       // 演示模式：按顺序循环四种场景
       const scenario = getCurrentDemoScenario()
+      console.log(`演示模式第${demoStep + 1}次点击，场景:`, scenario.name)
       
       // 准备演示图像
       const demoImages = scenario.images.map(fileName => ({
@@ -156,21 +157,26 @@ const GaitDetection = () => {
         await new Promise(resolve => setTimeout(resolve, 1000))
         setCollectedImages(prev => [...prev, demoImages[i]])
         setCurrentImageIndex(i + 1)
-        setDetectionMessage(`已采集 ${i + 1}/3 张步态图像`)
+        setDetectionMessage(`已采集 ${i + 1}/3 张步态图像 [${scenario.name}]`)
       }
       
       setDetectionPhase('analyzing')
-      setDetectionMessage('步态特征分析中...')
+      setDetectionMessage(`步态特征分析中... [${scenario.name}]`)
       
       // 模拟AI分析过程
       setTimeout(() => {
         const result = createDemoResult(scenario)
+        console.log('演示结果创建完成:', result)
         setIdentificationResult(result)
         setShowAutoVerification(true)
         setDetectionPhase('ready')
         
         // 下一次点击使用下一个场景
-        setDemoStep(prev => prev + 1)
+        setDemoStep(prev => {
+          const nextStep = prev + 1
+          console.log(`下次将使用步骤 ${nextStep}, 场景: ${getDemoScenarios()[nextStep % 4].name}`)
+          return nextStep
+        })
       }, 2000)
     } else {
       // 正常模式
@@ -200,9 +206,33 @@ const GaitDetection = () => {
     const { expectedResult } = scenario
     
     // 创建识别详情（用于显示识别图像）
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    
+    // 根据场景设置不同的时间
+    let displayHour, displayMinute, displaySecond
+    if (scenario.id === 'resident_restricted') {
+      // 住户夜间限制 - 使用夜间时间（23:00左右）
+      displayHour = '23'
+      displayMinute = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+      displaySecond = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+    } else if (scenario.id === 'recognition_fail') {
+      // 陌生人检测 - 使用凌晨时间（02:00左右）
+      displayHour = '02'
+      displayMinute = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+      displaySecond = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+    } else {
+      // 正常时间（白天）
+      displayHour = String(now.getHours()).padStart(2, '0')
+      displayMinute = String(now.getMinutes()).padStart(2, '0')
+      displaySecond = String(now.getSeconds()).padStart(2, '0')
+    }
+    
     const recognitionDetails = scenario.images.map((fileName, index) => ({
       url: `/demo_images/${fileName}`,
-      fileName: fileName,
+      fileName: `${year}_${month}${day}_${displayHour}${displayMinute}${String(Number(displaySecond) + index).padStart(2, '0')}_${String(index + 1).padStart(3, '0')}.jpg`,
       confidence: expectedResult.confidence + (Math.random() - 0.5) * 0.01, // 轻微变化
       userId: expectedResult.userId,
       features: `特征点${index + 1}`,
@@ -253,8 +283,8 @@ const GaitDetection = () => {
         user: null,
         confidence: expectedResult.confidence,
         recognitionDetails: recognitionDetails,
-        identifiedId: 'UNKNOWN',
-        message: '身份识别失败，访问被拒绝',
+        identifiedId: 'STRANGER',
+        message: '检测到陌生人，高准确率确认非授权人员，访问被拒绝',
         timestamp: new Date().toISOString()
       }
     }
